@@ -7,7 +7,12 @@ downloading, munging, and plotting.
 
 - [Installation](#Installation)
   - [Instructions](#Instructions)
+  - [Requirements](#Requirements)
 - [Downloader](#Downloader)
+
+## Data
+
+This repository uses the publicly-accessible NOAA GOES 16 data found at [s3](https://s3.console.aws.amazon.com/s3/buckets/noaa-goes16/ABI-L1b-RadM/?region=us-west-2), specifically the ABI-L1b-RadM product.
 
 ## Installation
 
@@ -28,5 +33,15 @@ python environment. Below are several usefule commands for doing so with conda.
 1. `set -o allexport && source .env && set +o allexport` to export environment variables
 1. `pip install -r requirements.txt` to install dependencies
 1. `scripts/test` to verify installation
+
+### Requirements
+
+1. To interact with S3 via [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
+one either needs to have credentials stored at `~/.aws/credentials` (see [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file)) or the environment variables
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
+
+## Examples
+
+Checkout the `examples/` directory for example notebooks.
 
 ## Downloader
