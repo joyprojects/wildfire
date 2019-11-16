@@ -40,4 +40,8 @@ python environment. Below are several usefule commands for doing so with conda.
 one either needs to have credentials stored at `~/.aws/credentials` (see [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file)) or the environment variables
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
 
+## Examples
+
+Checkout the `examples/` directory for example notebooks.
+
 ## Downloader
