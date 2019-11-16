@@ -5,4 +5,11 @@ set -euxo pipefail
 # -x print each command run to stdout
 # -o pipefail return the error status of the last command to exit
 
+
+echo "Checking code style with pylint..."
+python3 -m pylint goes
+echo "Success!"
+
+echo "Running unit tests..."
 python -m pytest -v --cov=goes tests/
+echo "Success!"
