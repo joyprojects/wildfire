@@ -18,6 +18,6 @@ setup(
     include_package_data=True,
     install_requires=open("requirements.in").readlines(),
     tests_require=open("requirements-dev.in").readlines(),
-    description="Utilities for work with GOES 16/17 satellite data",
+    description="Utilities for working with GOES 16/17 satellite data",
     long_description="\n" + open("README.md").read(),
 )
