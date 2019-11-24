@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: The default issue template
+about: Task list is found at https://docs.google.com/document/d/1Fk9SyMWqcQDYikULxFtq55PBgg0DPCozdLtB6niy08A/edit#
 title: ''
 labels: ''
 assignees: ''
