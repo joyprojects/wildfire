@@ -6,10 +6,8 @@ set -euxo pipefail
 # -o pipefail return the error status of the last command to exit
 
 
-echo "Checking code style with pylint..."
-python3 -m pylint wildfire
-echo "Success!"
+./scripts/test
 
-echo "Running unit tests..."
-python -m pytest -v
+echo "Running integration tests..."
+python -m pytest -v tests/it
 echo "Success!"

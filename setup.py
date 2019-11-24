@@ -9,7 +9,7 @@ def get_version():
 
 
 setup(
-    name="goes",
+    name="wildfire",
     version=get_version(),
     url="https://github.com/Ferrumofomega/goes",
     author="",
@@ -18,6 +18,6 @@ setup(
     include_package_data=True,
     install_requires=open("requirements.in").readlines(),
     tests_require=open("requirements-dev.in").readlines(),
-    description="Utilities for working with GOES 16/17 satellite data",
+    description="Modelling characteristics of wildfires",
     long_description="\n" + open("README.md").read(),
 )
