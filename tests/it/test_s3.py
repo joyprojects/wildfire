@@ -1,3 +1,4 @@
+import datetime
 import os
 import tempfile
 
@@ -18,3 +19,34 @@ def test_downloader():
 
         actual = xr.open_dataset(filename_or_obj=actual)
         assert actual.dataset_name == os.path.basename(key)
+
+
+def test_query_s3():
+    actual = downloader.query_s3(
+        satellite="noaa-goes17",
+        regions=["M2"],
+        channels=[1],
+        start=datetime.datetime(2019, 1, 1, 1),
+        end=datetime.datetime(2019, 1, 1, 2),
+    )
+    assert len(actual) == 60
+
+
+def test_download_batch():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        actual = downloader.download_batch(
+            satellite="noaa-goes17",
+            regions=["M2"],
+            channels=[1],
+            start=datetime.datetime(2019, 1, 1, 1),
+            end=datetime.datetime(2019, 1, 1, 1, 1),
+            local_directory=temp_dir,
+        )
+        assert len(actual) == 1
+
+        local_filepath = actual[0]
+        actual = local_filepath
+        assert os.path.exists(actual)
+
+        actual = xr.open_dataset(filename_or_obj=actual)
+        assert actual.dataset_name == os.path.basename(local_filepath)
