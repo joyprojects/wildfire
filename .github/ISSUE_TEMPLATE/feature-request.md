@@ -9,13 +9,13 @@ assignees: ''
 
 ## Checklist
 
-[ ] Select Project Label
-[ ] Select Sub-Project Milestone
+- [ ] Select Project Label
+- [ ] Select Sub-Project Milestone
 
-## Description
+## Feature Description
 
-## Notes
+## Developer Notes
 
-## Tasks
+## Sub-Tasks
 
 ## Acceptance Criteria
