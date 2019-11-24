@@ -14,14 +14,16 @@ assignees: ''
 
 ## Feature Description
 
+MANDATORY
+
 ## Developer Notes
 
-- 
+- OPTIONAL
 
 ## Sub-Tasks
 
-- [ ] 
+- [ ] OPTIONAL
 
 ## Acceptance Criteria
 
-- [ ] 
+- [ ] MANDATORY
