@@ -16,6 +16,12 @@ assignees: ''
 
 ## Developer Notes
 
+- 
+
 ## Sub-Tasks
 
+- [ ]
+
 ## Acceptance Criteria
+
+- [ ]
