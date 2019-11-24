@@ -9,8 +9,8 @@ assignees: ''
 
 ## Checklist
 
-- [ ] Select Project Label
-- [ ] Select Sub-Project Milestone
+- Select Project Label
+- Select Sub-Project Milestone
 
 ## Feature Description
 
