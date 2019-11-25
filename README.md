@@ -11,6 +11,7 @@ geostationary satellite imagery.
   - [Instructions](#Instructions)
   - [Requirements](#Requirements)
 - [goes/](#goes/)
+- [NAS](#NAS)
 
 ## Installation
 
@@ -49,8 +50,9 @@ Utilties for using NOAA's GOES-16/17 satellite data, which is publicly accessibl
 ## NAS
 
 This project is meant to be deployed both locally and on NASA's NEX Super Computers.
-For detailed documentation on a number of topics and bugs at NAS please see [here.](https://www.nas.nasa.gov/hecc/support/kb/)
-For an overview of NAS Compute Architecture see [here.] 
+1. For detailed documentation on a number of topics and bugs at NAS please see [here.](https://www.nas.nasa.gov/hecc/support/kb/)
+1. For an overview of NAS Compute Architecture see [here.] 
+1. Support can be reached easily by phone at 800-331-8737 and <support@nas.nasa.gov>.
 
 ### Conda on NAS
 
@@ -60,9 +62,12 @@ For an overview of NAS Compute Architecture see [here.]
 
 ### Interactive Sessions
 
-All users of NAS can launch an interactive PBS session with 
+All users of NAS can launch an interactive PBS session with qsub, with a sample command found here:
 `qsub -I -q v100 -l select=1:ncpus=1:model=sky_gpu,walltime=12:00:00`. The node ID (for instance `r101i0n4`) is constant 
 per user (it does not change per different interactive sessions).
+
+Alternatively, users can launch jobs via a PBS script. For more information please see [here](https://www.nas.nasa.gov/hecc/support/kb/using-conda-environments-for-machine-learning_557.html.
+A sample script can be found in the examples folder as well.
 
 ### Reserved Notes
 
@@ -78,7 +83,11 @@ When setting up your NAS environment, please setup:
 
 1. [Public Key Authentication](https://www.nas.nasa.gov/hecc/support/kb/setting-up-public-key-authentication_230.html)  
 for all pfes/sfes you intend to use (sfeX). Note that you do not need to this for all `lou` hosts, which is just storage.
-1. [SSH Passthrough.](https://www.nas.nasa.gov/hecc/support/kb/setting-up-ssh-passthrough_232.html) This repository has an example `~/ssh/config`, including commonly needed ciphers.
+1. [SSH Passthrough.](https://www.nas.nasa.gov/hecc/support/kb/setting-up-ssh-passthrough_232.html) 
+This repository has an example `~/ssh/config`, including commonly needed ciphers.
+1. When setting up an SSH Tunnel, please use: `ssh -L 5901:node_name:5901 pfe` where `node_name` is the name of the 
+interactive or reserved node.
+1. 
 
 ### Jupyter Notebooks on NAS.
 1. Please walk through [Secure Jupyter Setup.](https://www.nas.nasa.gov/hecc/support/kb/secure-setup-for-using-jupyter-notebook-on-hecc-systems_576.html) 
