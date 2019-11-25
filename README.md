@@ -54,6 +54,14 @@ This project is meant to be deployed both locally and on NASA's NEX Super Comput
 1. For an overview of NAS Compute Architecture see [here.] 
 1. Support can be reached easily by phone at 800-331-8737 and <support@nas.nasa.gov>.
 
+### Storage
+
+1. All data should be stored on Lou. For more information please see [here](https://www.nas.nasa.gov/hecc/support/kb/the-lou-mass-storage-system_371.html).
+1. For all data storage purposes, please store your data on ` Lou:/u/your_nas_username`
+1. `/nobackup/your_nas_username` is cleared regularly regularly. `home4/your_nas_username` is not.
+1. NAS has much of the GOES16 data we are working with available in `nex/datapool/goes16`, accessible from pfe.
+1. THe `/nasa` folder available via pfe has a lot of useful software you can easily load.
+
 ### Conda on NAS
 
 1. Conda is natively supported on NAS. On a given instance, to ensure that conda is loaded, please call:
@@ -87,7 +95,6 @@ for all pfes/sfes you intend to use (sfeX). Note that you do not need to this fo
 This repository has an example `~/ssh/config`, including commonly needed ciphers.
 1. When setting up an SSH Tunnel, please use: `ssh -L 5901:node_name:5901 pfe` where `node_name` is the name of the 
 interactive or reserved node.
-1. 
 
 ### Jupyter Notebooks on NAS.
 1. Please walk through [Secure Jupyter Setup.](https://www.nas.nasa.gov/hecc/support/kb/secure-setup-for-using-jupyter-notebook-on-hecc-systems_576.html) 
