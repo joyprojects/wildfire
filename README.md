@@ -61,7 +61,7 @@ This project is meant to be deployed both locally and on NASA's NEX Super Comput
 1. For all data storage purposes, please store your data on ` Lou:/u/your_nas_username`
 1. `/nobackup/your_nas_username` is cleared regularly regularly. `home4/your_nas_username` is not.
 1. NAS has much of the GOES16 data we are working with available in `nex/datapool/goes16`, accessible from pfe.
-1. THe `/nasa` folder available via pfe has a lot of useful software you can easily load.
+1. The `/nasa` folder available via pfe has a lot of useful software you can easily load.
 
 ### Conda on NAS
 
