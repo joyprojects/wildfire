@@ -59,7 +59,7 @@ Utilties for using NOAA's GOES-16/17 satellite data, which is publicly accessibl
 
 This project is meant to be deployed both locally and on NASA's NEX Super Computers.
 1. For detailed documentation on a number of topics and bugs at NAS please see [here](https://www.nas.nasa.gov/hecc/support/kb/).
-1. For an overview of many common NAS tasks see [here.](https://www.nas.nasa.gov/hecc/support/kb/basic-tasks_264.html)
+1. For an overview of many common NAS tasks see [here](https://www.nas.nasa.gov/hecc/support/kb/basic-tasks_264.html).
 1. For an overview of NAS Compute Architecture see [here](https://www.nas.nasa.gov/hecc/support/kb/hpc-environment-overview_25.html).
 1. Support can be reached easily by phone at 800-331-8737 and <support@nas.nasa.gov>.
 
@@ -67,7 +67,7 @@ This project is meant to be deployed both locally and on NASA's NEX Super Comput
 
 1. All data should be stored on Lou. For more information please see [here](https://www.nas.nasa.gov/hecc/support/kb/the-lou-mass-storage-system_371.html).
 1. For all data storage purposes, please store your data on ` Lou:/u/your_nas_username`
-1. `/nobackup/your_nas_username` is cleared regularly regularly. `home4/your_nas_username` is not.
+1. `/nobackup/your_nas_username` is cleared regularly. `home4/your_nas_username` is not.
 1. NAS has much of the GOES16 data we are working with available in `nex/datapool/goes16`, accessible from pfe.
 1. The `/nasa` folder available via pfe has a lot of useful software you can easily load.
 
@@ -92,7 +92,7 @@ A sample script can be found in the examples folder as well.
 
 ### Reserved Notes
 
-All users can reserve a compute nodes. For more information see [here.](https://www.nas.nasa.gov/hecc/support/kb/reserving-a-dedicated-compute-node_556.html)
+All users can reserve a compute node. For more information see [here](https://www.nas.nasa.gov/hecc/support/kb/reserving-a-dedicated-compute-node_556.html).
 These reserved nodes are nice ways to set up long-running Jupyter Notebooks. Users may have at most one reserved node on the Pleaides compute cluster.
 
 To get information about the status of your reserved nodes, use: `pbs_rfe status`. 
