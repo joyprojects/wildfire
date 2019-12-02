@@ -110,8 +110,11 @@ interactive or reserved node.
 
 ### Jupyter Notebooks on NAS.
 1. Please walk through [Secure Jupyter Setup.](https://www.nas.nasa.gov/hecc/support/kb/secure-setup-for-using-jupyter-notebook-on-hecc-systems_576.html) 
-Note that the instructions in the `Setting Up Jupyter` section are meant to be run on `sfe`, which contain the `/nasa` 
-folder.
+The instructions in the `Setting Up Jupyter` section are meant to be run on `sfe`, which contain the `/nasa` 
+folder. You are required to setup a password for a Jupyter notebook.
 1. After, please navigate to [Using Jupyter for Machine Learning.](https://www.nas.nasa.gov/hecc/support/kb/using-jupyter-notebook-for-machine-learning_602.html)
-1. It's easiest to deploy Jupyter from either a reserved or interactive node.
-TODO: Figure how to to actually connect Jupyter Notebook.
+1. It's easiest to deploy Jupyter from either a reserved or interactive node. You will need to make sure the relevant
+modules are loaded, and the wanted conda environment activated, before launching.
+1. The command to connect to the reserved/interactive node is: `your_local_system% ssh -o "StrictHostKeyChecking ask" -L 18080:localhost:8888 
+-o ProxyJump=sfe,pfe20 r601i0n0`, and the connection will be at: `https://localhost:18080/lab?`. You will need to enter 
+the password for the Jupyter browser you created earlier.
