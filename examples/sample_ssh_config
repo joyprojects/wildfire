@@ -1,13 +1,4 @@
-## For ALL ##
-Host *
-        KexAlgorithms +diffie-hellman-group1-sha1
-        Ciphers aes128-ctr,aes192-ctr,aes256-ctr,aes128-cbc,3des-cbc
-
-## For NAS Updated 20190315 ##
-Host pfe pfe-last pfe.nas.nasa.gov pfe-last.nas.nasa.gov
-        ProxyCommand ssh shzimmer@sfe2.nas.nasa.gov /usr/local/bin/ssh-balance %h
-        HostKeyAlias pfe21.nas.nas.gov
-        HostbasedAuthentication no
+#Updated 20190315
 
 Host sfe
         # Replace sfe3 with sfe1 or sfe2 if sfe3 is unavailable, and
@@ -44,6 +35,5 @@ Host *.nas.nasa.gov lou lou? lfe? pfe?? ?fe *-last mfe?
         Protocol                2
         ProxyCommand            ssh -oCompression=no sfe /usr/local/bin/ssh-proxy %h
         ServerAliveInterval     5m
-
 # Replace <nas_login_name> with your NAS username
         User               <nas_login_name>
