@@ -12,6 +12,14 @@ geostationary satellite imagery.
   - [Requirements](#Requirements)
 - [goes/](#goes/)
 - [NAS](#NAS)
+    -[Storage](#Storage)
+    -[Conda on NAS](#Conda on NAS)
+    -[Installs](#Installs)
+    -[Interactive Sessions](#Interactive Sessions)
+    -[Reserved Notes](#Reserved Notes)
+    -[SSH](#SSH)
+    -[Jupyter Notebooks on NAS](#Jupyter Notebooks on NAS.)
+    
 
 ## Installation
 
