@@ -77,6 +77,10 @@ This project is meant to be deployed both locally and on NASA's NEX Super Comput
 `% module use -a /u/analytix/tools/modulefiles` and `% module load miniconda3/v4`.
 1. You can create your own conda environments easily, and call them on any interactive or reserved node.
 
+### Installs
+
+It appears you cannot install python libraries on a compute instance, it needs to be on a pfe.
+
 ### Interactive Sessions
 
 All users of NAS can launch an interactive PBS session with qsub, with a sample command found here:
