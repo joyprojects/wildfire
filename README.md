@@ -92,7 +92,7 @@ A sample script can be found in the examples folder as well.
 
 ### Reserved Notes
 
-All users can reserve a compute nodes. For more information see [here.](https://www.nas.nasa.gov/hecc/support/kb/reserving-a-dedicated-compute-node_556.html)
+All users can reserve a compute node. For more information see [here](https://www.nas.nasa.gov/hecc/support/kb/reserving-a-dedicated-compute-node_556.html).
 These reserved nodes are nice ways to set up long-running Jupyter Notebooks. Users may have at most one reserved node on the Pleaides compute cluster.
 
 To get information about the status of your reserved nodes, use: `pbs_rfe status`. 
