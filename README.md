@@ -75,7 +75,7 @@ All users of NAS can launch an interactive PBS session with qsub, with a sample 
 `qsub -I -q v100 -l select=1:ncpus=1:model=sky_gpu,walltime=12:00:00`. The node ID (for instance `r101i0n4`) is constant 
 per user (it does not change per different interactive sessions).
 
-Alternatively, users can launch jobs via a PBS script. For more information please see [here](https://www.nas.nasa.gov/hecc/support/kb/using-conda-environments-for-machine-learning_557.html.
+Alternatively, users can launch jobs via a PBS script. For more information please see [here](https://www.nas.nasa.gov/hecc/support/kb/using-conda-environments-for-machine-learning_557.html).
 A sample script can be found in the examples folder as well.
 
 ### Reserved Notes
