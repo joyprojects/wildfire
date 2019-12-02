@@ -59,7 +59,7 @@ Utilties for using NOAA's GOES-16/17 satellite data, which is publicly accessibl
 
 This project is meant to be deployed both locally and on NASA's NEX Super Computers.
 1. For detailed documentation on a number of topics and bugs at NAS please see [here](https://www.nas.nasa.gov/hecc/support/kb/).
-1. For an overview of many common NAS tasks see [here.](https://www.nas.nasa.gov/hecc/support/kb/basic-tasks_264.html)
+1. For an overview of many common NAS tasks see [here](https://www.nas.nasa.gov/hecc/support/kb/basic-tasks_264.html).
 1. For an overview of NAS Compute Architecture see [here](https://www.nas.nasa.gov/hecc/support/kb/hpc-environment-overview_25.html).
 1. Support can be reached easily by phone at 800-331-8737 and <support@nas.nasa.gov>.
 
