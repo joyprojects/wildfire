@@ -101,7 +101,10 @@ When setting up your NAS environment, please setup:
 1. [Public Key Authentication](https://www.nas.nasa.gov/hecc/support/kb/setting-up-public-key-authentication_230.html)  
 for all pfes/sfes you intend to use (sfeX). Note that you do not need to this for all `lou` hosts, which is just storage.
 1. [SSH Passthrough.](https://www.nas.nasa.gov/hecc/support/kb/setting-up-ssh-passthrough_232.html) 
-This repository has an example `~/ssh/config`, including commonly needed ciphers.
+This repository has an example `~/ssh/config`, including commonly needed ciphers. Importantly, you should setup 
+SSH passthrough for lou, pfes, and sfes you intend to use. You will not be able to connect to a reserved node or an 
+interactive node if you do not have passthrough setup for that pfe. You will know passthrough is setup when you are not
+asked for your NAS password (only the PASSCODE and RSA Key).
 1. When setting up an SSH Tunnel, please use: `ssh -L 5901:node_name:5901 pfe` where `node_name` is the name of the 
 interactive or reserved node.
 
