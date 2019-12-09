@@ -12,13 +12,14 @@ geostationary satellite imagery.
   - [Requirements](#Requirements)
 - [goes/](#goes/)
 - [NAS](#NAS)
-    -[Storage](#Storage)
-    -[Conda on NAS](#Conda on NAS)
-    -[Installs](#Installs)
-    -[Interactive Sessions](#Interactive Sessions)
-    -[Reserved Notes](#Reserved Notes)
-    -[SSH](#SSH)
-    -[Jupyter Notebooks on NAS](#Jupyter Notebooks on NAS.)
+    - [Storage](#Storage)
+    - [Conda on NAS](#Conda on NAS)
+    - [Installs](#Installs)
+    - [Interactive Sessions](#Interactive Sessions)
+    - [Reserved Notes](#Reserved Notes)
+    - [SSH](#SSH)
+    - [Jupyter Notebooks on NAS](#Jupyter Notebooks on NAS.)
+    - [PBS](#PBS)
     
 
 ## Installation
@@ -122,3 +123,8 @@ modules are loaded, and the wanted conda environment activated, before launching
 1. The command to connect to the reserved/interactive node is: `your_local_system% ssh -o "StrictHostKeyChecking ask" -L 18080:localhost:8888 
 -o ProxyJump=sfe,pfe20 r601i0n0`, and the connection will be at: `https://localhost:18080/lab?`. You will need to enter 
 the password for the Jupyter browser you created earlier.
+
+### PBS
+1. PBS jobs can be inspected using the `qstat -u <nas_username>` command.
+1. To delete a job please use: `qdel <job_id>`.
+
