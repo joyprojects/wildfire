@@ -1,5 +1,7 @@
 # Wildfire
 
+![](https://github.com/joyprojects/wildfire/workflows/CI/badge.svg)
+
 This is a repository for for the purpose of predicting characteristics about wildfires from
 geostationary satellite imagery.
 
