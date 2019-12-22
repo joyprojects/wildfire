@@ -28,24 +28,22 @@ def build_local_path(local_directory, filepath, satellite):
     return os.path.join(local_directory, satellite, filepath)
 
 
-def parse_filepath(filepath):
-    """Parse necessary information from the filepath.
+def parse_filename(filepath):
+    """Parse necessary information from the filename.
 
-    This method also verifies correct filepath input.
+    This method also verifies correct filename input.
 
     Examples
     --------
-    /ABI-L1b-RadM/2019/300/20/
     OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
-    Region = Mesoscale 1
+    Region = M1
     Channel = 14
-    Satellite = GOES-17
+    Satellite = noaa-goes17
     Scan Start Time = 2019-10-27 20:48:27.5
 
     Parameters
     ----------
-    filepath : str
-        Path to look for at `LOCAL_DIRECTORY` and in S3 (only if not local).
+    filename : str
     """
     region, channel, satellite, started_at = re.search(
         r"OR_ABI-L1b-Rad(.*)-M\dC(\d{2})_(G\d{2})_s(.*)_e.*_c.*.nc", filepath
