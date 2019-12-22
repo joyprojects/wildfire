@@ -36,4 +36,4 @@ Host *.nas.nasa.gov lou lou? lfe? pfe?? ?fe *-last mfe?
         ProxyCommand            ssh -oCompression=no sfe /usr/local/bin/ssh-proxy %h
         ServerAliveInterval     5m
 # Replace <nas_login_name> with your NAS username
-        User               <nas_login_name>
+        User                    <nas_login_name>
