@@ -10,15 +10,16 @@ geostationary satellite imagery.
 - [Installation](#Installation)
   - [Instructions](#Instructions)
   - [Requirements](#Requirements)
+- [documentation/](#documentation/)
 - [goes/](#goes/)
 - [NAS](#NAS)
   - [Storage](#Storage)
-  - [Conda on NAS](#Conda on NAS)
+  - [Conda on NAS](#Conda-on-NAS)
   - [Installs](#Installs)
-  - [Interactive Sessions](#Interactive Sessions)
-  - [Reserved Notes](#Reserved Notes)
+  - [Interactive Sessions](#Interactive-Sessions)
+  - [Reserved Notes](#Reserved-Notes)
   - [SSH](#SSH)
-  - [Jupyter Notebooks on NAS](#Jupyter Notebooks on NAS.)
+  - [Jupyter Notebooks on NAS](#Jupyter-Notebooks-on-NAS)
   - [PBS](#PBS)
 
 ## Installation
@@ -47,15 +48,17 @@ python environment. Below are several usefule commands for doing so with conda.
 one either needs to have credentials stored at `~/.aws/credentials` (see [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file)) or the environment variables
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
 
-## Examples
+## documentation/
 
-Checkout the `examples/` directory for interacting with GOES data and NAS code examples.
+Checkout the `documentation/examples/` directory for interacting with GOES data and NAS code examples.
 
 ## goes/
 
 Utilties for using NOAA's GOES-16/17 satellite data, which is publicly accessible in Amazon S3.
 
 ## NAS
+
+![alt text](documentation/nas_server_structure.jpg)
 
 This project is meant to be deployed both locally and on NASA's NEX Super Computers.
 
