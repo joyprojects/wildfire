@@ -12,17 +12,46 @@ LOCAL_DIRECTORY = "downloaded_data"
 
 _logger = logging.getLogger(__name__)
 
-# TODO write class docstring
-# TODO write process docstring
-# TODO write _calculate_reflectance_factor docstring
-# TODO write _calculate_brightness_temperature(dataset) docstring
-# TODO implement 2km resolution
-# TODO implement filter bad pixels
-# TODO tests
 
+class GoesScan:  # pylint: disable=too-few-public-methods
+    """Wrapper around a single channel-region-time satellite scan from GOES.
 
-class GoesScan:
+    Attributes
+    ----------
+    region : str
+        Must be in the set (F, M1, M2, C). Defined in the `filepath`.
+    channel : int
+        Must be between 1 - 16. Defined in the `filepath`.
+    satellite : str
+        Must be either "goes16" or "goes17". Defined in the `filepath`.
+    started_at_utc : datetime.datetime
+        Scan start datetime. Defined in the `filepath`.
+    filepath : str
+        Local filepath to the desired data set. This is the same as the s3 key for the
+        same data set.
+        e.g. ABI-L1b-RadM/2019/300/20/
+        OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
+    local_directory : str
+        Local directory in which to look for the `filepath`.
+    dataset : xr.Dataset
+        The data found at `{local_directory}/{filepath}` after postprocessing throught
+        the `_process()` method.
+    """
+
     def __init__(self, filepath, local_directory=LOCAL_DIRECTORY):
+        """Initialize.
+
+        Parameters
+        ----------
+        filepath : str
+            Local filepath to the desired data set. This is the same as the s3 key for the
+            same data set.
+            e.g. ABI-L1b-RadM/2019/300/20/
+            OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
+        local_directory : str
+            Optional. Local directory in which to look for the `filepath`. Defaults to
+            "downloaded_data".
+        """
         region, channel, satellite, started_at_utc = utilities.parse_filepath(
             filepath=filepath
         )
@@ -68,7 +97,7 @@ class GoesScan:
                 local_directory=self.local_directory,
             )
             scan = xr.open_dataset(file_path)
-        return self._process(scan)
+        return self._process(dataset=scan)
 
     def _process(self, dataset):
         """Process scan.
