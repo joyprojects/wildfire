@@ -49,7 +49,7 @@ one either needs to have credentials stored at `~/.aws/credentials` (see [here](
 
 ## Examples
 
-Checkout the `examples/` directory for example notebooks.
+Checkout the `examples/` directory for interacting with GOES data and NAS code examples.
 
 ## goes/
 
@@ -113,7 +113,7 @@ asked for your NAS password (only the PASSCODE and RSA Key).
 1. When setting up an SSH Tunnel, please use: `ssh -L 5901:node_name:5901 pfe` where `node_name` is the name of the
 interactive or reserved node.
 
-### Jupyter Notebooks on NAS.
+### Jupyter Notebooks on NAS
 
 1. Please walk through [Secure Jupyter Setup.](https://www.nas.nasa.gov/hecc/support/kb/secure-setup-for-using-jupyter-notebook-on-hecc-systems_576.html)
 The instructions in the `Setting Up Jupyter` section are meant to be run on `sfe`, which contain the `/nasa`
