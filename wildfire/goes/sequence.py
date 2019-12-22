@@ -1,11 +1,5 @@
+"""Wrapper around a group of goes data."""
 from . import downloader, scan
-
-# TODO implement get
-# TODO implement process
-# TODO implement plot_time_series
-# TODO implement plot_individual_scans
-# TODO tests
-# TODO documentation
 
 
 def factory(  # pylint: disable=bad-continuation
