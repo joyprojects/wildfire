@@ -170,7 +170,7 @@ def query_s3(satellite, regions, channels, start, end):
         product_description = product_description_format.format(region=region[0])
 
         current = start.replace(minute=0, second=0, microsecond=0)
-        inner_pbar = tqdm(total=_num_hours_to_check(start=current, end=end), desc="Hours")
+        inner_progress_bar = tqdm(total=_num_hours_to_check(start=current, end=end), desc="Hours")
         while current <= end:
             key_filter = key_path_format.format(
                 product_description=product_description,
@@ -191,6 +191,6 @@ def query_s3(satellite, regions, channels, start, end):
             ]
             scans += s3_scans
             current += datetime.timedelta(hours=1)
-            inner_pbar.update(1)
-        inner_pbar.close()
+            inner_progress_bar.update(1)
+        inner_progress_bar.close()
     return scans
