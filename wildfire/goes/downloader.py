@@ -3,9 +3,11 @@ import datetime
 import logging
 import math
 import os
+import tempfile
 
 import boto3
 from tqdm import tqdm
+import xarray as xr
 
 from . import utilities
 
@@ -23,8 +25,8 @@ def make_necessary_directories(filepath):
     os.makedirs(name=os.path.dirname(filepath), exist_ok=True)
 
 
-def download_scan(s3_bucket, s3_key, local_directory):
-    """Download specific scan from S3.
+def persist_s3(s3_bucket, s3_key, local_directory):
+    """Download and persist specific scan from S3.
 
     Parameters
     ----------
@@ -43,10 +45,29 @@ def download_scan(s3_bucket, s3_key, local_directory):
     )
     make_necessary_directories(filepath=local_filepath)
     _logger.info(
-        "Downloading s3://%s/%s to %s", s3_bucket, s3_key, local_filepath,
+        "Persisting s3://%s/%s to %s", s3_bucket, s3_key, local_filepath,
     )
     s3.download_file(Bucket=s3_bucket, Key=s3_key, Filename=local_filepath)
     return local_filepath
+
+
+def read_s3(s3_bucket, s3_key):
+    """Read specific scan from S3 as xarray Dataset.
+
+    Parameters
+    ----------
+    s3_bucket : str
+    s3_key : str
+
+    Returns
+    -------
+    xr.core.dataset.Dataset
+    """
+    s3 = boto3.client("s3")
+    with tempfile.NamedTemporaryFile() as temp_file:
+        s3.download_file(Bucket=s3_bucket, Key=s3_key, Filename=temp_file.name)
+        dataset = xr.open_dataset(temp_file.name)
+    return dataset
 
 
 def download_batch(satellite, regions, channels, start, end, local_directory):
@@ -73,7 +94,7 @@ def download_batch(satellite, regions, channels, start, end, local_directory):
     filepaths = []
     for s3_scan in s3_scans:
         filepaths.append(
-            download_scan(
+            persist_s3(
                 s3_bucket=s3_scan.bucket_name,
                 s3_key=s3_scan.key,
                 local_directory=local_directory,
@@ -102,7 +123,7 @@ def _is_good_object(key, regions, channels, start, end):
     -------
     Boolean
     """
-    region, channel, _, scan_started_at = utilities.parse_filepath(filepath=key)
+    region, channel, _, scan_started_at = utilities.parse_filename(filepath=key)
     return (
         (region in regions)
         and (channel in channels)
@@ -170,7 +191,9 @@ def query_s3(satellite, regions, channels, start, end):
         product_description = product_description_format.format(region=region[0])
 
         current = start.replace(minute=0, second=0, microsecond=0)
-        inner_progress_bar = tqdm(total=_num_hours_to_check(start=current, end=end), desc="Hours")
+        inner_progress_bar = tqdm(
+            total=_num_hours_to_check(start=current, end=end), desc="Hours"
+        )
         while current <= end:
             key_filter = key_path_format.format(
                 product_description=product_description,

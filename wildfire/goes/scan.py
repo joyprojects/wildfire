@@ -1,6 +1,7 @@
 """Wrapper for a GOES-16/17 satellite image."""
 import logging
 import os
+import urllib
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,55 +14,75 @@ LOCAL_DIRECTORY = "downloaded_data"
 _logger = logging.getLogger(__name__)
 
 
+def read_nc(filepath):
+    """Read scan from S3 or local.
+
+    Parameters
+    ----------
+    filepath : str
+        Either an S3 URL, or a local file path.
+
+    Returns
+    -------
+    GoesScan
+    """
+    if filepath.startswith("s3://"):
+        s3_url = urllib.parse.urlparse(filepath)
+        scan_xr = downloader.read_s3(
+            s3_bucket=s3_url.netloc, s3_key=s3_url.path.lstrip("/")
+        )
+    else:
+        scan_xr = _read_from_local(filepath)
+    return GoesScan(dataset=scan_xr)
+
+
+def _read_from_local(filepath):
+    """Read dataset from local filepath, if exists.
+
+    Raises
+    ------
+    FileNotFoundError
+        If goes scan does not exist at `filepath`
+
+    Returns
+    -------
+    xr.core.dataset.Dataset
+    """
+    if os.path.exists(filepath):
+        return xr.open_dataset(filepath)
+    raise FileNotFoundError(f"Could not find file at {filepath}.")
+
+
 class GoesScan:  # pylint: disable=too-few-public-methods
     """Wrapper around a single channel-region-time satellite scan from GOES.
 
     Attributes
     ----------
+    dataset : xr.core.dataset.Dataset
     region : str
-        Must be in the set (F, M1, M2, C). Defined in the `filepath`.
+        In the set (F, M1, M2, C).
     channel : int
-        Must be between 1 - 16. Defined in the `filepath`.
+       Between 1 - 16.
     satellite : str
-        Must be either "goes16" or "goes17". Defined in the `filepath`.
+        Either "noaa-goes16" or "noaa-goes17".
     started_at_utc : datetime.datetime
-        Scan start datetime. Defined in the `filepath`.
-    filepath : str
-        Local filepath to the desired data set. This is the same as the s3 key for the
-        same data set.
-        e.g. ABI-L1b-RadM/2019/300/20/
-        OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
-    local_directory : str
-        Local directory in which to look for the `filepath`.
-    dataset : xr.Dataset
-        The data found at `{local_directory}/{filepath}` after postprocessing throught
-        the `_process()` method.
+        Scan start datetime.
     """
 
-    def __init__(self, filepath, local_directory=LOCAL_DIRECTORY):
+    def __init__(self, dataset):
         """Initialize.
 
         Parameters
         ----------
-        filepath : str
-            Local filepath to the desired data set. This is the same as the s3 key for the
-            same data set.
-            e.g. ABI-L1b-RadM/2019/300/20/
-            OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
-        local_directory : str
-            Optional. Local directory in which to look for the `filepath`. Defaults to
-            "downloaded_data".
+        dataset : xr.core.dataset.Dataset
         """
-        region, channel, satellite, started_at_utc = utilities.parse_filepath(
-            filepath=filepath
-        )
-        self.region = region
-        self.channel = channel
-        self.satellite = satellite
-        self.started_at_utc = started_at_utc
-        self.filepath = filepath
-        self.local_directory = local_directory
-        self.dataset = self._get()
+        self.dataset = self._process(dataset=dataset)
+        (
+            self.region,
+            self.channel,
+            self.satellite,
+            self.started_at,
+        ) = utilities.parse_filename(dataset.dataset_name)
 
     def plot(self, axis=None, **imshow_kwargs):
         """Plot the reflectance factor or the brightness temperature based on channel."""
@@ -79,25 +100,19 @@ class GoesScan:  # pylint: disable=too-few-public-methods
         axis.imshow(self.dataset.brightness_temperature, **imshow_kwargs)
         return axis
 
-    def _get(self):
-        """Get the satellite scan.
-
-        Check `local_directory` for the scan. If it's not there, then download it from
-        Amazon S3.
-
-        Returns
-        -------
-        xr.Dataset
-        """
-        scan = self._check_local()
-        if scan is None:
-            file_path = downloader.download_scan(
-                s3_bucket=self.satellite,
-                s3_key=self.filepath,
-                local_directory=self.local_directory,
-            )
-            scan = xr.open_dataset(file_path)
-        return self._process(dataset=scan)
+    def to_netcdf(self, directory):
+        local_filepath = os.path.join(
+            directory,
+            self.satellite,
+            f"ABI-L1b-Rad{self.region[0]}",
+            str(self.started_at.year),
+            self.started_at.strftime("%j"),
+            self.started_at.strftime("%H"),
+            self.dataset.dataset_name,
+        )
+        os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
+        self.dataset.to_netcdf(path=local_filepath)
+        return local_filepath
 
     def _process(self, dataset):
         """Process scan.
@@ -109,24 +124,6 @@ class GoesScan:  # pylint: disable=too-few-public-methods
         dataset = self._calculate_reflectance_factor(dataset=dataset)
         dataset = self._calculate_brightness_temperature(dataset=dataset)
         return dataset
-
-    def _check_local(self):
-        """Check the `local_directory` for the scan defined by `file_path`.
-
-        Returns
-        -------
-        xr.Dataset | None
-            If found locally, return it, else return None.
-        """
-        local_filepath = utilities.build_local_path(
-            local_directory=self.local_directory,
-            filepath=self.filepath,
-            satellite=self.satellite,
-        )
-        if os.path.exists(local_filepath):
-            _logger.info("Reading scan from local path %s", local_filepath)
-            return xr.open_dataset(local_filepath)
-        return None
 
     @staticmethod
     def _calculate_reflectance_factor(dataset):
@@ -140,9 +137,3 @@ class GoesScan:  # pylint: disable=too-few-public-methods
                 / ds.planck_bc2
             )
         )
-
-    def _to_2km_resolution(self):
-        raise NotImplementedError
-
-    def _filter_bad_pixels(self):
-        raise NotImplementedError
