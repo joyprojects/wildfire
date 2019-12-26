@@ -1,4 +1,11 @@
-"""S3 interface to download NASA/NOAA GOES-R satellite images."""
+"""S3 interface to download NASA/NOAA GOES-R satellite images.
+
+This module uses the boto3 library to interact with Amazon S3. boto3 requires the user to
+supply their access key id and secret access key. To provide boto3 with the necessary
+credentials the user must either have a `~/.aws/credentials` file, or the environment
+variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` set. See this package's README.md
+or boto3's documentation at https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file for more information.
+"""
 import datetime
 import logging
 import math
@@ -10,6 +17,10 @@ from tqdm import tqdm
 from . import utilities
 
 _logger = logging.getLogger(__name__)
+
+# TODO download_batch accepts a list of object summaries? and then make downloading a bin script? if do this, update sequence.py
+# TODO yes to the above, cause then GoesSequence can get a list of keys from s3, and then check if any of them are already local
+# TODO _check_size_with_user should not raise an assertion error
 
 
 def make_necessary_directories(filepath):
@@ -49,6 +60,18 @@ def download_scan(s3_bucket, s3_key, local_directory):
     return local_filepath
 
 
+def _check_size_with_user(size):
+    prompt = f"About to download {size:.0f}GB of data. Continue? [y/n]: "
+    prompt_accepted = False
+
+    while not prompt_accepted:
+        answer = input(prompt).lower().strip()
+        if answer == "y":
+            prompt_accepted = True
+        elif answer == "n":
+            raise AssertionError(f"User does not want to download {size:.0f}GB of data")
+
+
 def download_batch(satellite, regions, channels, start, end, local_directory):
     """Download batch of satellite scans from Amazon S3 matching input.
 
@@ -70,6 +93,11 @@ def download_batch(satellite, regions, channels, start, end, local_directory):
     s3_scans = query_s3(
         satellite=satellite, regions=regions, channels=channels, start=start, end=end
     )
+    download_size_gb = sum(map(lambda scan: scan.size, s3_scans)) / 1e9
+    if download_size_gb >= 10:
+        _check_size_with_user(size=download_size_gb)
+
+    _logger.info("Downloading %dGB of data...", int(download_size_gb))
     filepaths = []
     for s3_scan in s3_scans:
         filepaths.append(
@@ -170,7 +198,9 @@ def query_s3(satellite, regions, channels, start, end):
         product_description = product_description_format.format(region=region[0])
 
         current = start.replace(minute=0, second=0, microsecond=0)
-        inner_progress_bar = tqdm(total=_num_hours_to_check(start=current, end=end), desc="Hours")
+        inner_progress_bar = tqdm(
+            total=_num_hours_to_check(start=current, end=end), desc="Hours"
+        )
         while current <= end:
             key_filter = key_path_format.format(
                 product_description=product_description,
