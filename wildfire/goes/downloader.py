@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 """S3 interface to download NASA/NOAA GOES-R satellite images.
 
 This module uses the boto3 library to interact with Amazon S3. boto3 requires the user to
@@ -19,10 +20,6 @@ import xarray as xr
 from . import utilities
 
 _logger = logging.getLogger(__name__)
-
-# TODO download_batch accepts a list of object summaries? and then make downloading a bin script? if do this, update sequence.py
-# TODO yes to the above, cause then GoesSequence can get a list of keys from s3, and then check if any of them are already local
-# TODO _check_size_with_user should not raise an assertion error
 
 
 def make_necessary_directories(filepath):
@@ -63,6 +60,13 @@ def persist_s3(s3_bucket, s3_key, local_directory):
 
 
 def check_size_with_user(size):
+    """Check size of download with the user.
+
+    Parameters
+    ----------
+    size : float
+        Download size in gigabytes.
+    """
     prompt = f"About to download {size:.0f}GB of data. Continue? [y/n]: "
     prompt_accepted = False
 
