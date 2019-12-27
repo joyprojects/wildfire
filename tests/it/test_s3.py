@@ -43,8 +43,7 @@ def test_download_batch():
     test_object = s3.ObjectSummary(bucket_name=S3_BUCKET, key=S3_KEY)
     with tempfile.TemporaryDirectory() as temp_dir:
         actual = downloader.download_batch(
-            s3_object_summaries=[test_object],
-            local_directory=temp_dir,
+            s3_object_summaries=[test_object], local_directory=temp_dir,
         )
         assert len(actual) == 1
 
