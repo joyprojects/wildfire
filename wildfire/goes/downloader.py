@@ -1,4 +1,12 @@
-"""S3 interface to download NASA/NOAA GOES-R satellite images."""
+# pylint: disable=line-too-long
+"""S3 interface to download NASA/NOAA GOES-R satellite images.
+
+This module uses the boto3 library to interact with Amazon S3. boto3 requires the user to
+supply their access key id and secret access key. To provide boto3 with the necessary
+credentials the user must either have a `~/.aws/credentials` file, or the environment
+variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` set. See this package's README.md
+or boto3's documentation at https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file for more information.
+"""
 import datetime
 import logging
 import math
@@ -51,6 +59,25 @@ def persist_s3(s3_bucket, s3_key, local_directory):
     return local_filepath
 
 
+def check_size_with_user(size):
+    """Check size of download with the user.
+
+    Parameters
+    ----------
+    size : float
+        Download size in gigabytes.
+    """
+    prompt = f"About to download {size:.0f}GB of data. Continue? [y/n]: "
+    prompt_accepted = False
+
+    while not prompt_accepted:
+        answer = input(prompt).lower().strip()
+        if answer == "y":
+            prompt_accepted = True
+        elif answer == "n":
+            raise AssertionError(f"User does not want to download {size:.0f}GB of data")
+
+
 def read_s3(s3_bucket, s3_key):
     """Read specific scan from S3 as xarray Dataset.
 
@@ -70,16 +97,13 @@ def read_s3(s3_bucket, s3_key):
     return dataset
 
 
-def download_batch(satellite, regions, channels, start, end, local_directory):
+def download_batch(s3_object_summaries, local_directory):
     """Download batch of satellite scans from Amazon S3 matching input.
 
     Parameters
     ----------
-    satellite : str
-    regions : list(str)
-    channels : list(int)
-    start : datetime.datetime
-    end : datetime.datetime
+    s3_object_summaries : list of boto3.ObjectSummary
+        The output of `downloader.query_s3()` can be used as input here.
     local_directory : str
         Path to local directory at which to persist scans.
 
@@ -88,11 +112,12 @@ def download_batch(satellite, regions, channels, start, end, local_directory):
     list[str]
         List of downloaded filepaths.
     """
-    s3_scans = query_s3(
-        satellite=satellite, regions=regions, channels=channels, start=start, end=end
+    _logger.info(
+        "Downloading %dGB of data...",
+        int(sum(map(lambda scan: scan.size, s3_object_summaries)) / 1e9),
     )
     filepaths = []
-    for s3_scan in s3_scans:
+    for s3_scan in s3_object_summaries:
         filepaths.append(
             persist_s3(
                 s3_bucket=s3_scan.bucket_name,

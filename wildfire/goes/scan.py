@@ -14,7 +14,7 @@ LOCAL_DIRECTORY = "downloaded_data"
 _logger = logging.getLogger(__name__)
 
 
-def read_nc(filepath):
+def read_netcdf(filepath):
     """Read scan from S3 or local.
 
     Parameters
@@ -111,7 +111,10 @@ class GoesScan:  # pylint: disable=too-few-public-methods
             self.dataset.dataset_name,
         )
         os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
-        self.dataset.to_netcdf(path=local_filepath)
+        self.dataset.to_netcdf(
+            path=local_filepath,
+            encoding={"x": {"dtype": "float32"}, "y": {"dtype": "float32"}},
+        )
         return local_filepath
 
     def _process(self, dataset):

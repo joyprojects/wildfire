@@ -20,4 +20,5 @@ setup(
     tests_require=open("requirements-dev.in").readlines(),
     description="Modelling characteristics of wildfires",
     long_description="\n" + open("README.md").read(),
+    scripts=["bin/download_satellite_data"],
 )

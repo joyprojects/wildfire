@@ -11,8 +11,8 @@ SCAN_FILE_PATH = "ABI-L1b-RadM/2019/001/00/OR_ABI-L1b-RadM1-M3C01_G17_s201900100
 SCAN_LOCAL_DIRECTORY = "tests/resources"
 
 
-def test_read_nc_local():
-    actual = scan.read_nc(os.path.join(SCAN_LOCAL_DIRECTORY, SCAN_FILE_PATH))
+def test_read_netcdf_local():
+    actual = scan.read_netcdf(os.path.join(SCAN_LOCAL_DIRECTORY, SCAN_FILE_PATH))
     assert isinstance(actual, scan.GoesScan)
 
 
