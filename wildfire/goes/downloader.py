@@ -62,7 +62,8 @@ def persist_s3(s3_bucket, s3_key, local_directory):
     return local_filepath
 
 
-def _check_size_with_user(size):
+def check_size_with_user(s3_object_summaries):
+    size = sum(map(lambda scan: scan.size, s3_object_summaries)) / 1e9
     prompt = f"About to download {size:.0f}GB of data. Continue? [y/n]: "
     prompt_accepted = False
 
@@ -72,6 +73,8 @@ def _check_size_with_user(size):
             prompt_accepted = True
         elif answer == "n":
             raise AssertionError(f"User does not want to download {size:.0f}GB of data")
+
+
 def read_s3(s3_bucket, s3_key):
     """Read specific scan from S3 as xarray Dataset.
 
@@ -91,16 +94,13 @@ def read_s3(s3_bucket, s3_key):
     return dataset
 
 
-def download_batch(satellite, regions, channels, start, end, local_directory):
+def download_batch(s3_object_summaries, local_directory):
     """Download batch of satellite scans from Amazon S3 matching input.
 
     Parameters
     ----------
-    satellite : str
-    regions : list(str)
-    channels : list(int)
-    start : datetime.datetime
-    end : datetime.datetime
+    s3_object_summaries : list of boto3.ObjectSummary
+        The output of `downloader.query_s3()` can be used as input here.
     local_directory : str
         Path to local directory at which to persist scans.
 
@@ -109,16 +109,12 @@ def download_batch(satellite, regions, channels, start, end, local_directory):
     list[str]
         List of downloaded filepaths.
     """
-    s3_scans = query_s3(
-        satellite=satellite, regions=regions, channels=channels, start=start, end=end
+    _logger.info(
+        "Downloading %dGB of data...",
+        int(sum(map(lambda scan: scan.size, s3_object_summaries)) / 1e9),
     )
-    download_size_gb = sum(map(lambda scan: scan.size, s3_scans)) / 1e9
-    if download_size_gb >= 10:
-        _check_size_with_user(size=download_size_gb)
-
-    _logger.info("Downloading %dGB of data...", int(download_size_gb))
     filepaths = []
-    for s3_scan in s3_scans:
+    for s3_scan in s3_object_summaries:
         filepaths.append(
             persist_s3(
                 s3_bucket=s3_scan.bucket_name,
