@@ -62,8 +62,7 @@ def persist_s3(s3_bucket, s3_key, local_directory):
     return local_filepath
 
 
-def check_size_with_user(s3_object_summaries):
-    size = sum(map(lambda scan: scan.size, s3_object_summaries)) / 1e9
+def check_size_with_user(size):
     prompt = f"About to download {size:.0f}GB of data. Continue? [y/n]: "
     prompt_accepted = False
 

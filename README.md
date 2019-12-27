@@ -40,6 +40,7 @@ python environment. Below are several usefule commands for doing so with conda.
 1. `cp .sample_env .env` and fill out any `<>` blocks
 1. `set -o allexport && source .env && set +o allexport` to export environment variables
 1. `pip install -r requirements.txt` to install dependencies
+1. `python setup.py install` to install as a package
 1. `scripts/test-it` to verify installation
 
 ### Requirements

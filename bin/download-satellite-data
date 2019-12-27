@@ -1,4 +1,4 @@
-#!usr/bin/python
+#!usr/bin/env python
 import logging
 
 import click
@@ -78,11 +78,13 @@ def download(satellite, regions, channels, start, end, persist_directory):
         start=start,
         end=end,
     )
-    downloader.check_size_with_user(s3_object_summaries=scans_to_download)
+    downloaded_data_gb = sum(map(lambda scan: scan.size, scans_to_download)) / 1e9
+    if downloaded_data_gb > 10:
+        downloader.check_size_with_user(size=downloaded_data_gb)
     downloader.download_batch(
         s3_object_summaries=scans_to_download, local_directory=persist_directory
     )
-    _logger.info("Complete.")
+    _logger.info("Success.")
 
 
 if __name__ == "__main__":
