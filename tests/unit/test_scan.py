@@ -30,7 +30,7 @@ def test_goes_scan():
     assert actual.region == "M1"
     assert actual.channel == 1
     assert actual.satellite == "noaa-goes17"
-    assert actual.started_at == datetime.datetime(2019, 1, 1, 0, 0, 27)
+    assert actual.started_at_utc == datetime.datetime(2019, 1, 1, 0, 0, 27)
 
     with tempfile.TemporaryDirectory() as temp_directory:
         local_filepath = actual.to_netcdf(directory=temp_directory)

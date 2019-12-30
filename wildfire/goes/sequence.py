@@ -13,7 +13,7 @@ def factory(  # pylint: disable=bad-continuation
 
 
 class GoesSequence:
-    def __init__(self, filepaths, local_directory=scan.LOCAL_DIRECTORY):
+    def __init__(self, filepaths, local_directory):
         raise NotImplementedError
 
     def plot_time_series(self):

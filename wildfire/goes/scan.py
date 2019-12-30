@@ -81,7 +81,7 @@ class GoesScan:  # pylint: disable=too-few-public-methods
             self.region,
             self.channel,
             self.satellite,
-            self.started_at,
+            self.started_at_utc,
         ) = utilities.parse_filename(dataset.dataset_name)
 
     def plot(self, axis=None, **imshow_kwargs):
@@ -101,13 +101,14 @@ class GoesScan:  # pylint: disable=too-few-public-methods
         return axis
 
     def to_netcdf(self, directory):
+        """Persist dataset as a netcdf."""
         local_filepath = os.path.join(
             directory,
             self.satellite,
             f"ABI-L1b-Rad{self.region[0]}",
-            str(self.started_at.year),
-            self.started_at.strftime("%j"),
-            self.started_at.strftime("%H"),
+            str(self.started_at_utc.year),
+            self.started_at_utc.strftime("%j"),
+            self.started_at_utc.strftime("%H"),
             self.dataset.dataset_name,
         )
         os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
