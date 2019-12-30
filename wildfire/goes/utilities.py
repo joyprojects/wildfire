@@ -44,6 +44,11 @@ def parse_filename(filepath):
     Parameters
     ----------
     filename : str
+
+    Returns
+    -------
+    tuple of (str, int, str, datetime.datetime)
+        region, channel, satellite, started_at
     """
     region, channel, satellite, started_at = re.search(
         r"OR_ABI-L1b-Rad(.*)-M\dC(\d{2})_(G\d{2})_s(.*)_e.*_c.*.nc", filepath
