@@ -45,17 +45,3 @@ def test_is_good_object():
         start=datetime.datetime(2019, 11, 1),
         end=datetime.datetime(2019, 12, 1),
     )
-
-
-def test_num_hours_to_check():
-    actual = downloader._num_hours_to_check(
-        start=datetime.datetime(2019, 12, 1, 1, 30),
-        end=datetime.datetime(2019, 12, 1, 10),
-    )
-    assert actual == 9
-
-    actual = downloader._num_hours_to_check(
-        start=datetime.datetime(2019, 12, 1, 1, 30),
-        end=datetime.datetime(2019, 12, 2, 10),
-    )
-    assert actual == 24 + 9
