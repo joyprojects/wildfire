@@ -5,12 +5,13 @@ import pytest
 from wildfire.goes import scan
 
 
-def test_scan_init(all_bands):
+def test_scan(all_bands):
     actual = scan.GoesScan(bands=all_bands)
     assert actual.region == "M1"
     assert actual.satellite == "noaa-goes17"
     assert actual.scan_time_utc == datetime.datetime(2019, 10, 27, 20, 0, 27, 500000)
     assert list(actual.keys) == [f"band_{idx}" for idx in range(1, 17)]
+    assert actual["band_1"].equals(actual.bands["band_1"])
 
 
 def test_scan_init_bad_args(all_bands):

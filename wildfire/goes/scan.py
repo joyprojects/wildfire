@@ -2,6 +2,41 @@
 from . import utilities
 
 
+def get_goes_scan(satellite, region, scan_time_utc):
+    """Get the GoesScan corresponding the input.
+
+    Parameters
+    ----------
+    satellite : str
+        Must be in the set (G16, G17).
+    region : str
+        Must be in the set (C, F, M1, M2).
+    scan_time_utc : datetime.datetime
+        Datetime of the scan. Must be specified to the minute.
+
+    Returns
+    -------
+    GoesScan
+    """
+    raise NotImplementedError
+
+
+def from_netcdfs(filepaths):
+    """Read a GoesScan from a list of filepaths.
+
+    Parameters
+    ----------
+    filepaths : list of str
+        List of local filepaths from which to read a GoesScan. There must be 16 filepaths
+        each pointing to a different band's data from the same scan.
+
+    Returns
+    -------
+    GoesScan
+    """
+    raise NotImplementedError
+
+
 class GoesScan:
     """Wrapper around the 16 bands of a GOES satellite scan.
 
@@ -40,21 +75,6 @@ class GoesScan:
             filename=bands[0].dataset_name
         )
 
-    def _parse_input(self, bands):
-        parsed = {dataset.band_id.data[0]: dataset for dataset in bands}
-        missing_bands = set(range(1, 17)) - set(parsed.keys())
-        if missing_bands:
-            raise ValueError(f"Missing bands: {missing_bands}")
-        if len(bands) != 16:
-            raise ValueError(f"Too many bands provided (got {len(bands)}; expected 16)")
-        if not self._has_consistent_attributes(bands=bands):
-            raise ValueError(
-                "All bands must have the same scan start time, region, and satellite"
-            )
-        val = {f"band_{band_id}": parsed[band_id] for band_id in list(range(1, 17))}
-        print(type(val))
-        return val
-
     def __getitem__(self, key):
         """Get the GoesBand at a specific band in the scan.
 
@@ -69,27 +89,25 @@ class GoesScan:
         """
         return self.bands[key]
 
-    def __iter__(self):
-        """Iterate over the bands in the scan in order from band 1 to band 16.
+    @staticmethod
+    def _parse_input(bands):
+        parsed = {dataset.band_id.data[0]: dataset for dataset in bands}
+        _assert_no_missing_bands(bands=parsed)
+        _assert_16_bands(bands=bands)
+        _assert_consistent_attributes(bands=bands)
+        return {f"band_{band_id}": parsed[band_id] for band_id in list(range(1, 17))}
+
+    @property
+    def keys(self):
+        """Return the names of the bands for convenience."""
+        return self.bands.keys()
+
+    def iteritems(self):
+        """Return iterator over the scan in order from band 1 to band 16.
 
         Ordered from least to greatest by band number.
         """
-        yield self.bands.items()
-
-    @staticmethod
-    def _has_consistent_attributes(bands):
-        band_attributes = [
-            utilities.parse_filename(filename=dataset.dataset_name) for dataset in bands
-        ]
-        return (
-            len(
-                {
-                    (region, satellite, start_time)
-                    for region, _, satellite, start_time in band_attributes
-                }
-            )
-            == 1
-        )
+        return self.bands.items()
 
     def scale_to_500m(self):
         """Scale all bands to 500 meters.
@@ -164,42 +182,29 @@ class GoesScan:
         """
         raise NotImplementedError
 
-    @property
-    def keys(self):
-        """Return the names of the bands for convenience."""
-        return self.bands.keys()
+
+def _assert_no_missing_bands(bands):
+    missing_bands = set(range(1, 17)) - set(bands.keys())
+    if missing_bands:
+        raise ValueError(f"Missing bands: {missing_bands}")
 
 
-def get_goes_scan(satellite, region, scan_time_utc):
-    """Get the GoesScan corresponding the input.
-
-    Parameters
-    ----------
-    satellite : str
-        Must be in the set (G16, G17).
-    region : str
-        Must be in the set (C, F, M1, M2).
-    scan_time_utc : datetime.datetime
-        Datetime of the scan. Must be specified to the minute.
-
-    Returns
-    -------
-    GoesScan
-    """
-    raise NotImplementedError
+def _assert_16_bands(bands):
+    if len(bands) != 16:
+        raise ValueError(f"Too many bands provided (got {len(bands)}; expected 16)")
 
 
-def from_netcdfs(filepaths):
-    """Read a GoesScan from a list of filepaths.
-
-    Parameters
-    ----------
-    filepaths : list of str
-        List of local filepaths from which to read a GoesScan. There must be 16 filepaths
-        each pointing to a different band's data from the same scan.
-
-    Returns
-    -------
-    GoesScan
-    """
-    raise NotImplementedError
+def _assert_consistent_attributes(bands):
+    band_attributes = [
+        utilities.parse_filename(filename=dataset.dataset_name) for dataset in bands
+    ]
+    num_unique_attributes = len(
+        {
+            (region, satellite, start_time)
+            for region, _, satellite, start_time in band_attributes
+        }
+    )
+    if not num_unique_attributes == 1:
+        raise ValueError(
+            "All bands must have the same scan start time, region, and satellite"
+        )

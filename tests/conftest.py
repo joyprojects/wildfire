@@ -4,9 +4,11 @@ import os
 import pytest
 import xarray as xr
 
+from wildfire.goes import sequence
+
 
 @pytest.fixture()
-def single_band():
+def reflective_band():
     return xr.open_dataset(
         os.path.join(
             "tests",
@@ -18,8 +20,20 @@ def single_band():
 
 
 @pytest.fixture()
+def emissive_band():
+    return xr.open_dataset(
+        os.path.join(
+            "tests",
+            "resources",
+            "test_scan",
+            "OR_ABI-L1b-RadM1-M6C11_G17_s20193002000275_e20193002000332_c20193002000375.nc",
+        )
+    )
+
+
+@pytest.fixture()
 def all_bands():
-    scans = []
-    for filepath in glob.glob(os.path.join("tests", "resources", "test_scan", "*")):
-        scans.append(xr.open_dataset(filepath))
-    return scans
+    return [
+        xr.open_dataset(filepath)
+        for filepath in glob.glob(os.path.join("tests", "resources", "test_scan", "*"))
+    ]

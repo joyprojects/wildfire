@@ -1,5 +1,43 @@
 """Wrapper around the a single band's data from a GOES satellite scan."""
+import numpy as np
+
 from . import utilities
+
+
+def get_goes_band(satellite, region, band, scan_time_utc):
+    """Get the GoesBand corresponding the input.
+
+    Parameters
+    ----------
+    satellite : str
+        Must be in the set (G16, G17).
+    region : str
+        Must be in the set (C, F, M1, M2).
+    band : int
+        Must be between 1 and 16 inclusive.
+    scan_time_utc : datetime.datetime
+        Datetime of the scan. Must be specified to the minute.
+
+    Returns
+    -------
+    GoesBand
+    """
+    raise NotImplementedError
+
+
+def from_netcdf(filepath):
+    """Read a GoesBand from the filepath.
+
+    Parameters
+    ----------
+    filepath : str
+        May either be a local filepath, or an Amazon S3 URI.
+
+    Returns
+    -------
+    GoesBand
+    """
+    raise NotImplementedError
 
 
 class GoesBand:
@@ -67,8 +105,31 @@ class GoesBand:
             Optional, whether to plot the spectral radiance. Defaults to `False`, which
             will normalize either the reflectance factor or the brightness temperature
             depending on the band.
+
+        Returns
+        -------
+        xr.core.dataarray.DataArray
         """
-        raise NotImplementedError
+        if use_radiance:
+            return (self.dataset.Rad - self.dataset.Rad.mean()) / self.dataset.Rad.std()
+
+        parsed_data = self.parse()
+        return (parsed_data - parsed_data.mean()) / parsed_data.std()
+
+    def parse(self):
+        """Parse spectral radiance into appropriate units.
+
+        Will parse into reflectance factor for bands 1 - 6, and brightness temperature
+        for bands 7 - 16.
+
+        Returns
+        -------
+        xr.core.dataarray.DataArray
+        """
+        if self.band < 7:  # reflective band
+            return self.reflectance_factor
+        # emissive band
+        return self.brightness_temperature
 
     @property
     def reflectance_factor(self):
@@ -81,8 +142,12 @@ class GoesBand:
         ------
         ValueError
             If the band is not between 1 and 6 inclusive.
+
+        Returns
+        -------
+        xr.core.dataarray.DataArray
         """
-        raise NotImplementedError
+        return self.dataset.Rad * self.dataset.kappa0
 
     @property
     def brightness_temperature(self):
@@ -95,8 +160,16 @@ class GoesBand:
         ------
         ValueError
             If the band is not between 7 and 16 inclusive.
+
+        Returns
+        -------
+        xr.core.dataarray.DataArray
         """
-        raise NotImplementedError
+        return (
+            self.dataset.planck_fk2
+            / (np.log((self.dataset.planck_fk1 / self.dataset.Rad) + 1))
+            - self.dataset.planck_bc1
+        ) / self.dataset.planck_bc2
 
     def to_lat_lon(self):
         """Convert the X and Y of the ABI fixed grid to latitude and longitude."""
@@ -136,39 +209,3 @@ class GoesBand:
             The filepath of the persisted file.
         """
         raise NotImplementedError
-
-
-def get_goes_band(satellite, region, band, scan_time_utc):
-    """Get the GoesBand corresponding the input.
-
-    Parameters
-    ----------
-    satellite : str
-        Must be in the set (G16, G17).
-    region : str
-        Must be in the set (C, F, M1, M2).
-    band : int
-        Must be between 1 and 16 inclusive.
-    scan_time_utc : datetime.datetime
-        Datetime of the scan. Must be specified to the minute.
-
-    Returns
-    -------
-    GoesBand
-    """
-    raise NotImplementedError
-
-
-def from_netcdf(filepath):
-    """Read a GoesBand from the filepath.
-
-    Parameters
-    ----------
-    filepath : str
-        May either be a local filepath, or an Amazon S3 URI.
-
-    Returns
-    -------
-    GoesBand
-    """
-    raise NotImplementedError

@@ -2,6 +2,34 @@
 from .scan import GoesScan
 
 
+def get_goes_sequence(
+    satellite, region, band, start_time_utc, end_time_utc, time_resolution_per_hour=None
+):
+    """Get the GoesSequence corresponding to the input.
+
+    Parameters
+    ----------
+    satellite : str
+        Must be in the set (G16, G17).
+    region : str
+        Must be in the set (C, F, M1, M2).
+    band : int
+        Must be between 1 and 16 inclusive.
+    start_time_utc : datetime.datetime
+        Datetime of the first scan. Must be specified to the minute.
+    end_time_utc : datetime.datetime
+        Datetime of the last scan. Must be specified to the minute.
+    time_resolution_per_hour : int
+        Optional, number of scans to get per hout. Defaults to `None` which will get all
+        scans available.
+
+    Returns
+    -------
+    GoesSequence
+    """
+    raise NotImplementedError
+
+
 class GoesSequence:
     """Wrapper around a time series of GOES satellite scans.
 
@@ -30,17 +58,6 @@ class GoesSequence:
         self.first_scan_utc = min(self.scans.keys())
         self.last_scan_utc = max(self.scans.keys())
 
-    @staticmethod
-    def _parse_input(scans):
-        for scan in scans:
-            if not isinstance(scan, GoesScan):
-                raise ValueError(
-                    f"Input must be of type list of GoesScan. Found {type(scan)}"
-                )
-        parsed = {scan.scan_time_utc: scan for scan in scans}
-        ordered_keys = sorted(parsed.keys())
-        return {key: parsed[key] for key in ordered_keys}
-
     def __getitem__(self, key):
         """Get the GoesScan at a specific scan time in the sequence.
 
@@ -55,17 +72,28 @@ class GoesSequence:
         """
         return self.scans[key]
 
-    def __iter__(self):
-        """Iterate over the scans in the sequence from first scan to last scan.
+    def __len__(self):
+        """Return the number of scans in the sequence."""
+        return len(self.scans)
 
-        Ordered from least to greatest by datetime.
-        """
-        yield self.scans.items()
+    @staticmethod
+    def _parse_input(scans):
+        _assert_input_goes_scan(scans)
+        parsed = {scan.scan_time_utc: scan for scan in scans}
+        ordered_keys = sorted(parsed.keys())
+        return {key: parsed[key] for key in ordered_keys}
 
     @property
     def keys(self):
         """List scan times in the sequence."""
         return self.scans.keys()
+
+    def iteritems(self):
+        """Iterate over the scans in the sequence from first scan to last scan.
+
+        Ordered from least to greatest by datetime.
+        """
+        return self.scans.items()
 
     def plot(self, band):
         """Plot the time-series of a specific band as a GIF.
@@ -103,29 +131,9 @@ class GoesSequence:
         raise NotImplementedError
 
 
-def get_goes_sequence(
-    satellite, region, band, start_time_utc, end_time_utc, time_resolution_per_hour=None
-):
-    """Get the GoesSequence corresponding to the input.
-
-    Parameters
-    ----------
-    satellite : str
-        Must be in the set (G16, G17).
-    region : str
-        Must be in the set (C, F, M1, M2).
-    band : int
-        Must be between 1 and 16 inclusive.
-    start_time_utc : datetime.datetime
-        Datetime of the first scan. Must be specified to the minute.
-    end_time_utc : datetime.datetime
-        Datetime of the last scan. Must be specified to the minute.
-    time_resolution_per_hour : int
-        Optional, number of scans to get per hout. Defaults to `None` which will get all
-        scans available.
-
-    Returns
-    -------
-    GoesSequence
-    """
-    raise NotImplementedError
+def _assert_input_goes_scan(scans):
+    for scan in scans:
+        if not isinstance(scan, GoesScan):
+            raise ValueError(
+                f"Input must be of type list of GoesScan. Found {type(scan)}"
+            )
