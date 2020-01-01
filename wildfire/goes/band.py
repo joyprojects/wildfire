@@ -65,6 +65,9 @@ class GoesBand:
     def reflectance_factor(self):
         """Calculate the reflectance factor from spectral radiance.
 
+        For more information, see the Reflective Channels section at
+        https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/noaa_goes_documentation.ipynb
+
         Raises
         ------
         ValueError
@@ -75,6 +78,9 @@ class GoesBand:
     @property
     def brightness_temperature(self):
         """Calculate the brightness temperature from spectral radiance.
+
+        For more information, see the Emissive Channels section at
+        https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/noaa_goes_documentation.ipynb
 
         Raises
         ------
