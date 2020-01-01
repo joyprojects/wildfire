@@ -1,49 +1,25 @@
-"""Wrapper around a group of goes data."""
-from . import downloader, scan
-
-
-def factory(  # pylint: disable=bad-continuation
-    satellite, regions, channels, start, end, local_directory=scan.LOCAL_DIRECTORY
-):
-    s3_objects = downloader.query_s3(
-        satellite=satellite, regions=regions, channels=channels, start=start, end=end
-    )
-    filepaths = [obj.key for obj in s3_objects]
-    return GoesSequence(filepaths=filepaths, local_directory=local_directory)
-
-
 class GoesSequence:
-    def __init__(self, filepaths, local_directory):
+    def __init__(self, scans):
+        # verify input
+        self.scans = scans  # to dictionary by scan time
+        # fisrt scan time
+        # last scan time
+
+    def __getitem__(self, key):
+        return self.scans[key]
+
+    def __iter__(self):
+        yield self.scans.items()
+
+    def _verify_input(self):
         raise NotImplementedError
 
-    def plot_time_series(self):
-        # for channel, region in dataset plot animation
-        # should accept a stepsize
+    def plot_video(self, channel):
         raise NotImplementedError
 
-    def plot_individual_scans(self):
-        # probably should just thoughtfully create the col x row of the figure and then
-        # use the GoesScan.plot() method
+    def to_netcdf(self):
         raise NotImplementedError
 
-    def get(self):
-        raise NotImplementedError
 
-    def _process(self):
-        raise NotImplementedError
-
-    def _check_local(self):
-        # probably will use glob and then filter all the filepaths that are not local
-        raise NotImplementedError
-
-    def _to_reflectance_factor(self):
-        raise NotImplementedError
-
-    def _to_brightness_temperature(self):
-        raise NotImplementedError
-
-    def _to_2km_resolution(self):
-        raise NotImplementedError
-
-    def _filter_bad_pixels(self):
-        raise NotImplementedError
+def get_goes_sequence(satellite, region, channel, start_time_utc, end_time_utc):
+    raise NotImplementedError
