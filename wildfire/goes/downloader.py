@@ -146,7 +146,7 @@ def _is_good_object(key, regions, channels, start, end):
     -------
     Boolean
     """
-    region, channel, _, scan_started_at = utilities.parse_filename(filepath=key)
+    region, channel, _, scan_started_at = utilities.parse_filename(filename=key)
     return (
         (region in regions)
         and (channel in channels)

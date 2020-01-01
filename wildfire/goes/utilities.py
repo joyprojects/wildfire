@@ -28,7 +28,7 @@ def build_local_path(local_directory, filepath, satellite):
     return os.path.join(local_directory, satellite, filepath)
 
 
-def parse_filename(filepath):
+def parse_filename(filename):
     """Parse necessary information from the filename.
 
     This method also verifies correct filename input.
@@ -51,7 +51,7 @@ def parse_filename(filepath):
         region, channel, satellite, started_at
     """
     region, channel, satellite, started_at = re.search(
-        r"OR_ABI-L1b-Rad(.*)-M\dC(\d{2})_(G\d{2})_s(.*)_e.*_c.*.nc", filepath
+        r"OR_ABI-L1b-Rad(.*)-M\dC(\d{2})_(G\d{2})_s(.*)_e.*_c.*.nc", filename
     ).groups()
     started_at = datetime.datetime.strptime(started_at, "%Y%j%H%M%S%f")
     satellite = SATELLITE_CONVERSION[satellite]

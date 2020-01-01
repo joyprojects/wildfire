@@ -1,4 +1,5 @@
 """Wrapper around the 16 bands of a GOES satellite scan."""
+from . import utilities
 
 
 class GoesScan:
@@ -6,14 +7,16 @@ class GoesScan:
 
     Attributes
     ----------
-    bands : frozendict
+    bands : dict
         {
             "band_{idx}": wildfire.goes.band.GoesBand
-        }, where `idx` are the integers between 1 and 16 inclusive.
+        }, where `idx` are the integers between 1 and 16 inclusive and ordered from least
+        to greatest by `idx`.
     scan_time_utc : datetime.datetime
         Datetime of the scan start time. The same for all bands.
     satellite : str
-        In the set (G16, G17). The satellite the scan was made by. The same for all bands.
+    In the set (noaa-goes16, noaa-goes17). The satellite the scan was made by. The
+    same for all bands.
     region : str
         In the set (C, F, M1, M2). The region over which the scan was made. The same for
         all bands.
@@ -32,10 +35,25 @@ class GoesScan:
             If `bands` is not of type `list of wildfire.goes.band.GoesBand` or if `bands`
             is not of length 16, with one element for each band scanned.
         """
-        self.bands = bands  # parse to dictionary by band number -- _parse_input()
-        # scan time
-        # satellite
-        # region
+        self.bands = self._parse_input(bands=bands)
+        self.region, _, self.satellite, self.scan_time_utc = utilities.parse_filename(
+            filename=bands[0].dataset_name
+        )
+
+    def _parse_input(self, bands):
+        parsed = {dataset.band_id.data[0]: dataset for dataset in bands}
+        missing_bands = set(range(1, 17)) - set(parsed.keys())
+        if missing_bands:
+            raise ValueError(f"Missing bands: {missing_bands}")
+        if len(bands) != 16:
+            raise ValueError(f"Too many bands provided (got {len(bands)}; expected 16)")
+        if not self._has_consistent_attributes(bands=bands):
+            raise ValueError(
+                "All bands must have the same scan start time, region, and satellite"
+            )
+        val = {f"band_{band_id}": parsed[band_id] for band_id in list(range(1, 17))}
+        print(type(val))
+        return val
 
     def __getitem__(self, key):
         """Get the GoesBand at a specific band in the scan.
@@ -58,8 +76,20 @@ class GoesScan:
         """
         yield self.bands.items()
 
-    def _parse_input(self, bands):
-        raise NotImplementedError
+    @staticmethod
+    def _has_consistent_attributes(bands):
+        band_attributes = [
+            utilities.parse_filename(filename=dataset.dataset_name) for dataset in bands
+        ]
+        return (
+            len(
+                {
+                    (region, satellite, start_time)
+                    for region, _, satellite, start_time in band_attributes
+                }
+            )
+            == 1
+        )
 
     def scale_to_500m(self):
         """Scale all bands to 500 meters.
@@ -135,7 +165,7 @@ class GoesScan:
         raise NotImplementedError
 
     @property
-    def bands(self):
+    def keys(self):
         """Return the names of the bands for convenience."""
         return self.bands.keys()
 

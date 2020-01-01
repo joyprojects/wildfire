@@ -1,4 +1,5 @@
 """Wrapper around the a single band's data from a GOES satellite scan."""
+from . import utilities
 
 
 class GoesBand:
@@ -7,10 +8,14 @@ class GoesBand:
     Attributes
     ----------
     dataset : xr.core.dataset.DataSet
+    band : int
+        Between 1 and 16 inclusive. The band of light over which the scan was made.
+    band_wavelength_micrometers : float
+        The central wavelength of the band of light over which the scan was made.
     scan_time_utc : datetime.datetime
         Datetime of the scan's start time.
     satellite : str
-        In the set (G16, G17). The satellite the scan was made by.
+        In the set (noaa-goes16, noaa-goes17). The satellite the scan was made by.
     region : str
         In the set (C, F, M1, M2). The region over which the scan was made.
     """
@@ -23,9 +28,13 @@ class GoesBand:
         dataset : xr.core.dataset.DataSet
         """
         self.dataset = dataset
-        # scan time
-        # satellite
-        # region
+        (
+            self.region,
+            self.band,
+            self.satellite,
+            self.scan_time_utc,
+        ) = utilities.parse_filename(filename=dataset.dataset_name)
+        self.band_wavelength_micrometers = dataset.band_wavelength.data[0]
 
     def plot(self, use_radiance=False):
         """Plot the band.

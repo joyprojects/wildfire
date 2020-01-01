@@ -1,4 +1,5 @@
 """Wrapper around a time series of GOES satellite scans."""
+from .scan import GoesScan
 
 
 class GoesSequence:
@@ -6,9 +7,9 @@ class GoesSequence:
 
     Attributes
     ----------
-    scans : frozendict
+    scans : dict
         {datetime.datetime: wildfire.goes.scan.GoesScan}
-        frozendict is ordered by smallest key to largest key
+        Is ordered by smallest key to largest key
     first_scan_utc : datetime.datetime
     last_scan_utc : datetime.datetime
     """
@@ -25,9 +26,20 @@ class GoesSequence:
         ValueError
             If `scans` is not of type `list of wildfire.goes.scan.GoesScan`.
         """
-        self.scans = scans  # to dictionary by scan time -- _parse_input()
-        # fisrt scan time
-        # last scan time
+        self.scans = self._parse_input(scans=scans)
+        self.first_scan_utc = min(self.scans.keys())
+        self.last_scan_utc = max(self.scans.keys())
+
+    @staticmethod
+    def _parse_input(scans):
+        for scan in scans:
+            if not isinstance(scan, GoesScan):
+                raise ValueError(
+                    f"Input must be of type list of GoesScan. Found {type(scan)}"
+                )
+        parsed = {scan.scan_time_utc: scan for scan in scans}
+        ordered_keys = sorted(parsed.keys())
+        return {key: parsed[key] for key in ordered_keys}
 
     def __getitem__(self, key):
         """Get the GoesScan at a specific scan time in the sequence.
@@ -53,10 +65,7 @@ class GoesSequence:
     @property
     def keys(self):
         """List scan times in the sequence."""
-        raise NotImplementedError
-
-    def _parse_input(self, scans):
-        raise NotImplementedError
+        return self.scans.keys()
 
     def plot(self, band):
         """Plot the time-series of a specific band as a GIF.
