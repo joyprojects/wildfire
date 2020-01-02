@@ -3,7 +3,6 @@ import datetime
 import os
 import urllib
 
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -99,7 +98,7 @@ class GoesBand:
         ) = utilities.parse_filename(filename=dataset.dataset_name)
         self.band_wavelength_micrometers = dataset.band_wavelength.data[0]
 
-    def plot(self, axis=None, use_radiance=False, **imshow_kwargs):
+    def plot(self, axis=None, use_radiance=False, **xr_imshow_kwargs):
         """Plot the band.
 
         If not plotting the radiance, will plot the reflectance factor for bands 1 - 6,
@@ -114,20 +113,21 @@ class GoesBand:
             Optional, whether to plot the spectral radiance. Defaults to `False`, which
             will plot either the reflectance factor or the brightness temperature
             depending on the band.
+        **xr_imshow_kwargs : dict
+            Keyword arguments for xarray's plotting method
+            (http://xarray.pydata.org/en/stable/generated/xarray.plot.imshow.html). Some
+            useful keywords are figsize or cmap.
 
         Returns
         -------
         plt.image.AxesImage
         """
-        if axis is None:
-            _, axis = plt.subplots()
-
         if use_radiance:
             data = self.dataset.Rad
         else:
             data = self.parse()
 
-        return axis.imshow(data, **imshow_kwargs)
+        return data.plot.imshow(ax=axis, **xr_imshow_kwargs)
 
     def normalize(self, use_radiance=False):
         """Normalize data to be centered around 0.
@@ -178,7 +178,10 @@ class GoesBand:
         -------
         xr.core.dataarray.DataArray
         """
-        return self.dataset.Rad * self.dataset.kappa0
+        dataarray = self.dataset.Rad * self.dataset.kappa0
+        dataarray.attrs["long_name"] = "ABI L1b Reflectance Factor"
+        dataarray.attrs["units"] = "unitless"
+        return dataarray
 
     @property
     def brightness_temperature(self):
@@ -191,11 +194,14 @@ class GoesBand:
         -------
         xr.core.dataarray.DataArray
         """
-        return (
+        dataarray = (
             self.dataset.planck_fk2
             / (np.log((self.dataset.planck_fk1 / self.dataset.Rad) + 1))
             - self.dataset.planck_bc1
         ) / self.dataset.planck_bc2
+        dataarray.attrs["long_name"] = "ABI L1b Brightness Temperature"
+        dataarray.attrs["units"] = "Kelvin"
+        return dataarray
 
     def to_lat_lon(self):
         """Convert the X and Y of the ABI fixed grid to latitude and longitude."""

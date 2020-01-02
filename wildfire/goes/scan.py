@@ -91,6 +91,22 @@ class GoesScan:
 
     @staticmethod
     def _parse_input(bands):
+        """Validate and parse __init__ input.
+
+        Create sorted dictionary of band data from a list of band data. Ensure input has
+        16 elements with one element for every band between 1 and 16 inclusive. Ensure
+        ever element in the list has the same satellite, region, and scan start time.
+
+        Parameters
+        ----------
+        bands : list of wildfire.goes.band.GoesBand
+
+        Returns
+        -------
+        dict of {str: wildfire.goes.band.GoesBand}
+            Sorted dictionary of GOES satellite data, ordered by band number from
+            smallest to greatest.
+        """
         parsed = {dataset.band_id.data[0]: dataset for dataset in bands}
         _assert_no_missing_bands(bands=parsed)
         _assert_16_bands(bands=bands)
