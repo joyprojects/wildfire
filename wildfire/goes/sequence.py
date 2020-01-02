@@ -1,9 +1,15 @@
 """Wrapper around a time series of GOES satellite scans."""
-from .scan import GoesScan
+import datetime
+import logging
+
+from .scan import GoesScan, read_netcdfs
+from . import downloader, utilities
+
+_logger = logging.getLogger(__name__)
 
 
 def get_goes_sequence(
-    satellite, region, band, start_time_utc, end_time_utc, time_resolution_per_hour=None
+    satellite, region, start_time_utc, end_time_utc, max_scans_per_hour=None
 ):
     """Get the GoesSequence corresponding to the input.
 
@@ -13,21 +19,53 @@ def get_goes_sequence(
         Must be in the set (G16, G17).
     region : str
         Must be in the set (C, F, M1, M2).
-    band : int
-        Must be between 1 and 16 inclusive.
     start_time_utc : datetime.datetime
         Datetime of the first scan. Must be specified to the minute.
     end_time_utc : datetime.datetime
         Datetime of the last scan. Must be specified to the minute.
-    time_resolution_per_hour : int
-        Optional, number of scans to get per hout. Defaults to `None` which will get all
-        scans available.
+    max_scans_per_hour : int
+        Optional, maximum number of scans to get per hout. Defaults to `None` which will
+        get all scans available. The number of scans available per hour is also dependent
+        on the region scanned.
 
     Returns
     -------
     GoesSequence
     """
-    raise NotImplementedError
+    if max_scans_per_hour is None:
+        max_scans_per_hour = -1
+
+    s3_objects = downloader.query_s3(
+        satellite=satellite,
+        regions=[region],
+        channels=list(range(1, 17)),
+        start=start_time_utc,
+        end=end_time_utc,
+    )
+    time_resolution = max(
+        [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
+    )
+    current_time_utc = start_time_utc
+    scans = []
+    while current_time_utc <= end_time_utc:
+        _logger.info("Finding scan close to %s", current_time_utc)
+        closest_scan_objects = utilities.find_scans_closest_to_time(
+            s3_scans=s3_objects, desired_time=current_time_utc
+        )
+        if len(closest_scan_objects) != 16:
+            _logger.warning("Could not find well-formed scan near %s", current_time_utc)
+            continue
+
+        scans.append(
+            read_netcdfs(
+                filepaths=[
+                    f"s3://{s3_obj.bucket_name}/{s3_obj.key}"
+                    for s3_obj in closest_scan_objects
+                ]
+            )
+        )
+        current_time_utc += datetime.timedelta(minutes=time_resolution)
+    return GoesSequence(scans=scans)
 
 
 class GoesSequence:
@@ -38,8 +76,14 @@ class GoesSequence:
     scans : dict
         {datetime.datetime: wildfire.goes.scan.GoesScan}
         Is ordered by smallest key to largest key
+    satellite : str
+        Must be in the set (G16, G17).
+    region : str
+        Must be in the set (C, F, M1, M2).
     first_scan_utc : datetime.datetime
+        Datetime of first scan in sequence.
     last_scan_utc : datetime.datetime
+        Datetime of last scan in sequence.
     """
 
     def __init__(self, scans):
@@ -55,6 +99,8 @@ class GoesSequence:
             If `scans` is not of type `list of wildfire.goes.scan.GoesScan`.
         """
         self.scans = self._parse_input(scans=scans)
+        self.satellite = scans[0].satellite
+        self.region = scans[0].region
         self.first_scan_utc = min(self.scans.keys())
         self.last_scan_utc = max(self.scans.keys())
 
@@ -128,7 +174,11 @@ class GoesSequence:
         list of str
             The filepaths of the persisted files.
         """
-        raise NotImplementedError
+        filepaths = []
+        for _, goes_scan in self.iteritems():
+            for _, goes_band in goes_scan.iteritems():
+                filepaths.append(goes_band.to_netcdf(directory=directory))
+        return filepaths
 
 
 def _assert_input_goes_scan(scans):
