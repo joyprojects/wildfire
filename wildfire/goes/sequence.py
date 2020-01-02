@@ -42,6 +42,10 @@ def get_goes_sequence(
         start=start_time_utc,
         end=end_time_utc,
     )
+
+    if len(s3_objects) == 0:
+        raise ValueError(f"Could not find well-formed scans matching parameters")
+
     time_resolution = max(
         [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
     )

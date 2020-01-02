@@ -38,6 +38,10 @@ def get_goes_band(satellite, region, band, scan_time_utc):
         start=scan_time_utc - datetime.timedelta(minutes=region_time_resolution),
         end=scan_time_utc + datetime.timedelta(minutes=region_time_resolution),
     )
+
+    if len(s3_objects) == 0:
+        raise ValueError(f"Could not find well-formed scan near {scan_time_utc}")
+
     closest_s3_object = utilities.find_scans_closest_to_time(
         s3_scans=s3_objects, desired_time=scan_time_utc
     )[0]
