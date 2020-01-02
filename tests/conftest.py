@@ -4,7 +4,7 @@ import os
 import pytest
 import xarray as xr
 
-from wildfire.goes import sequence
+from wildfire.goes.sequence import GoesSequence
 
 
 @pytest.fixture()

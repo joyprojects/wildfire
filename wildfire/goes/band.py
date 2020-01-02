@@ -43,7 +43,7 @@ def get_goes_band(satellite, region, band, scan_time_utc):
     return GoesBand(dataset=dataset)
 
 
-def from_netcdf(filepath):
+def read_netcdf(filepath):
     """Read a GoesBand from the filepath.
 
     Parameters

@@ -21,7 +21,7 @@ def get_goes_scan(satellite, region, scan_time_utc):
     raise NotImplementedError
 
 
-def from_netcdfs(filepaths):
+def read_netcdfs(filepaths):
     """Read a GoesScan from a list of filepaths.
 
     Parameters
