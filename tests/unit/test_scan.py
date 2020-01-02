@@ -1,4 +1,7 @@
 import datetime
+import glob
+import os
+import tempfile
 
 import pytest
 
@@ -11,7 +14,13 @@ def test_scan(all_bands):
     assert actual.satellite == "noaa-goes17"
     assert actual.scan_time_utc == datetime.datetime(2019, 10, 27, 20, 0, 27, 500000)
     assert list(actual.keys) == [f"band_{idx}" for idx in range(1, 17)]
-    assert actual["band_1"].equals(actual.bands["band_1"])
+    assert actual["band_1"].dataset.equals(actual.bands["band_1"].dataset)
+    for _, actual_band in actual.iteritems():
+        assert isinstance(actual_band, goes.GoesBand)
+    with tempfile.TemporaryDirectory() as temp_directory:
+        filepaths = actual.to_netcdf(directory=temp_directory)
+        for filepath in filepaths:
+            assert os.path.exists(filepath)
 
 
 def test_scan_init_bad_args(all_bands):
@@ -31,3 +40,21 @@ def test_scan_init_bad_args(all_bands):
     with pytest.raises(ValueError) as error_message:
         goes.GoesScan(bands=all_bands)
         assert "must have same" in error_message
+
+
+def test_rescale_to_500m(all_bands):
+    original = goes.GoesScan(bands=all_bands)
+    actual = original.rescale_to_500m()
+    assert isinstance(actual, goes.GoesScan)
+    assert actual.satellite == original.satellite
+    assert actual.region == original.region
+    assert actual.scan_time_utc == original.scan_time_utc
+    for _, band_data in actual.iteritems():
+        assert band_data.dataset.Rad.shape == (500, 500)
+
+
+def test_read_netcdfs_local():
+    actual = goes.read_netcdfs(
+        filepaths=glob.glob(os.path.join("tests", "resources", "test_scan", "*"))
+    )
+    assert isinstance(actual, goes.GoesScan)

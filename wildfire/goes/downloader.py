@@ -170,7 +170,7 @@ def query_s3(satellite, regions, channels, start, end):
 
     Returns
     -------
-    list[boto3.resources.factory.s3.ObjectSummary]
+    list of boto3.resources.factory.s3.ObjectSummary
     """
     _logger.info(
         """Querying for s3 objects with the following properties:

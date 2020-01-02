@@ -1,5 +1,6 @@
 """Wrapper around the a single band's data from a GOES satellite scan."""
 import datetime
+import logging
 import os
 import urllib
 
@@ -7,6 +8,8 @@ import numpy as np
 import xarray as xr
 
 from . import downloader, utilities
+
+_logger = logging.getLogger(__name__)
 
 
 def get_goes_band(satellite, region, band, scan_time_utc):
@@ -27,19 +30,20 @@ def get_goes_band(satellite, region, band, scan_time_utc):
     -------
     GoesBand
     """
-    s3_object = downloader.query_s3(
+    region_time_resolution = utilities.REGION_TIME_RESOLUTION_MINUTES[region]
+    s3_objects = downloader.query_s3(
         satellite=satellite,
         regions=[region],
         channels=[band],
-        start=scan_time_utc,
-        end=scan_time_utc + datetime.timedelta(minutes=1),
+        start=scan_time_utc - datetime.timedelta(minutes=region_time_resolution),
+        end=scan_time_utc + datetime.timedelta(minutes=region_time_resolution),
     )
-    if len(s3_object) != 1:
-        raise ValueError("Could not find a specific scan matching parameters")
-
-    s3_object = s3_object[0]
-    dataset = downloader.read_s3(s3_bucket=s3_object.bucket_name, s3_key=s3_object.key)
-    return GoesBand(dataset=dataset)
+    closest_s3_object = utilities.find_scans_closest_to_time(
+        s3_scans=s3_objects, desired_time=scan_time_utc
+    )[0]
+    return read_netcdf(
+        filepath=f"s3://{closest_s3_object.bucket_name}/{closest_s3_object.key}"
+    )
 
 
 def read_netcdf(filepath):
@@ -127,7 +131,16 @@ class GoesBand:
         else:
             data = self.parse()
 
-        return data.plot.imshow(ax=axis, **xr_imshow_kwargs)
+        axis_image = data.plot.imshow(ax=axis, **xr_imshow_kwargs)
+        axis_image.axes.set_title(
+            f"Band {self.band} ({self.band_wavelength_micrometers:.2f} micrometers)"
+            f"\n{self.scan_time_utc:%Y-%m-%d %H:%M} UTC",
+            fontsize=20,
+        )
+        axis_image.axes.set_xlabel(None)
+        axis_image.axes.set_ylabel(None)
+        axis_image.colorbar.ax.yaxis.label.set_size(20)
+        return axis_image
 
     def normalize(self, use_radiance=False):
         """Normalize data to be centered around 0.

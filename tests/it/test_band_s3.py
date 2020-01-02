@@ -3,13 +3,6 @@ import datetime
 from wildfire import goes
 
 
-def test_from_netcdf_s3(s3_bucket_key):
-    actual = goes.read_netcdf(
-        filepath=f"s3://{s3_bucket_key['bucket']}/{s3_bucket_key['key']}"
-    )
-    assert isinstance(actual, goes.GoesBand)
-
-
 def test_get_goes_band():
     satellite = "noaa-goes17"
     region = "M1"

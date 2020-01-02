@@ -1,9 +1,29 @@
 """Wrapper around the 16 bands of a GOES satellite scan."""
-from . import utilities
+import datetime
+import logging
+import math
+import urllib
+
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+
+from . import downloader, utilities
+from .band import GoesBand
+
+_logger = logging.getLogger(__name__)
 
 
 def get_goes_scan(satellite, region, scan_time_utc):
-    """Get the GoesScan corresponding the input.
+    """Get the GoesScan matching parameters.
+
+    Retrieves the closest scan to `scan_time_utc` matching the `satellite` and `region`
+    from Amazon S3.
+
+    For performance improvement, we use the fact that we know how often the satellite
+    produces a scan to limit the window of our search. For example, there is a CONUS
+    satellite scan every 5 minutes, so we search a 10 minute window centered on
+    `scan_time_utc`.
 
     Parameters
     ----------
@@ -18,7 +38,27 @@ def get_goes_scan(satellite, region, scan_time_utc):
     -------
     GoesScan
     """
-    raise NotImplementedError
+    region_time_resolution = utilities.REGION_TIME_RESOLUTION_MINUTES[region]
+    s3_objects = downloader.query_s3(
+        satellite=satellite,
+        regions=[region],
+        channels=list(range(1, 17)),
+        start=scan_time_utc - datetime.timedelta(minutes=region_time_resolution),
+        end=scan_time_utc + datetime.timedelta(minutes=region_time_resolution),
+    )
+    closest_scan_objects = utilities.find_scans_closest_to_time(
+        s3_scans=s3_objects, desired_time=scan_time_utc
+    )
+    if len(closest_scan_objects) != 16:
+        raise ValueError(
+            f"Could not find well-formed scan set in s3 near {scan_time_utc}"
+        )
+
+    return read_netcdfs(
+        filepaths=[
+            f"s3://{s3_obj.bucket_name}/{s3_obj.key}" for s3_obj in closest_scan_objects
+        ]
+    )
 
 
 def read_netcdfs(filepaths):
@@ -34,7 +74,17 @@ def read_netcdfs(filepaths):
     -------
     GoesScan
     """
-    raise NotImplementedError
+    datasets = []
+    for filepath in filepaths:
+        if filepath.startswith("s3://"):  # s3
+            s3_url = urllib.parse.urlparse(filepath)
+            dataset = downloader.read_s3(
+                s3_bucket=s3_url.netloc, s3_key=s3_url.path.lstrip("/")
+            )
+        else:  # local
+            dataset = xr.open_dataset(filepath)
+        datasets.append(dataset)
+    return GoesScan(bands=datasets)
 
 
 class GoesScan:
@@ -62,7 +112,7 @@ class GoesScan:
 
         Parameters
         ----------
-        bands : list of wildfire.goes.band.GoesBand
+        bands : list of xr.core.dataset.Dataset
 
         Raises
         ------
@@ -99,7 +149,7 @@ class GoesScan:
 
         Parameters
         ----------
-        bands : list of wildfire.goes.band.GoesBand
+        bands : list of xr.core.dataset.Dataset
 
         Returns
         -------
@@ -107,7 +157,7 @@ class GoesScan:
             Sorted dictionary of GOES satellite data, ordered by band number from
             smallest to greatest.
         """
-        parsed = {dataset.band_id.data[0]: dataset for dataset in bands}
+        parsed = {dataset.band_id.data[0]: GoesBand(dataset=dataset) for dataset in bands}
         _assert_no_missing_bands(bands=parsed)
         _assert_16_bands(bands=bands)
         _assert_consistent_attributes(bands=bands)
@@ -125,13 +175,13 @@ class GoesScan:
         """
         return self.bands.items()
 
-    def scale_to_500m(self):
+    def rescale_to_500m(self):
         """Scale all bands to 500 meters.
 
         The spatial resolution is band-dependent:
+            500 m: bands 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
             1 km: bands 1, 3, 5
-            500 m: band 2
-            2 km: bands 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+            2 km: band 2
 
         And so, it is sometimes important to downscale all bands to be in the same
         spatial resolution.
@@ -141,7 +191,16 @@ class GoesScan:
         GoesScan
             A `GoesScan` object where each band has been rescaled to 500 meters.
         """
-        raise NotImplementedError
+        rescaled_datasets = []
+        for band_id, goes_scan in self.iteritems():
+            if band_id in ("band_1", "band_3", "band_5"):
+                rescaled_data = goes_scan.dataset.thin(2)  # 1km -> 500m
+            elif band_id == "band_2":
+                rescaled_data = goes_scan.dataset.thin(4)  # 2km -> 500m
+            else:
+                rescaled_data = goes_scan.dataset  # 500m -> 500m
+            rescaled_datasets.append(rescaled_data)
+        return GoesScan(bands=rescaled_datasets)
 
     def to_netcdf(self, directory):
         """Persist a netcdf4 per band.
@@ -162,41 +221,116 @@ class GoesScan:
         list of str
             The filepaths of the persisted files.
         """
-        raise NotImplementedError
+        filepaths = []
+        for _, goes_band in self.iteritems():
+            filepaths.append(goes_band.to_netcdf(directory=directory))
+        return filepaths
 
-    def next(self):
-        """Get the next available `GoesScan` from Amazon S3.
+    def next(self, days=0, hours=0, minutes=0):
+        """Get the next available `GoesScan` from Amazon S3 matching parameters.
+
+        By default, get the next available scan.
+
+        Parameters
+        ----------
+        days : int
+            Optional, defaults to `0`.
+        hours : int
+            Optional, defaults to `0`.
+        minutes : int
+            Optional, defaults to `0`. If both `days` and `hours` are `0`, then this
+            defaults to the time resolution of the region.
 
         Returns
         -------
         GoesScan
-            A `GoesScan` object of the scan occuring directly after this scan's time.
+            A `GoesScan` object of the next available scan mathcing parameters.
         """
-        raise NotImplementedError
+        if days + hours + minutes == 0:
+            minutes = utilities.REGION_TIME_RESOLUTION_MINUTES[self.region]
 
-    def previous(self):
-        """Get the `GoesScan` from Amazon S3 that occured directly before this scan.
+        return get_goes_scan(
+            satellite=self.satellite,
+            region=self.region,
+            scan_time_utc=self.scan_time_utc
+            + datetime.timedelta(days=days, hours=hours, minutes=minutes),
+        )
+
+    def previous(self, days=0, hours=0, minutes=0):
+        """Get the previous `GoesScan` from Amazon S3 that matches parameters.
+
+        By default, get the closest previous available scan.
+
+        Parameters
+        ----------
+        days : int
+            Optional, defaults to `0`
+        hours : int
+            Optional, defaults to `0`
+        minutes : int
+            Optional, defaults to `0`. If both `days` and `hours` are `0`, then this
+            defaults to the time resolution of the region.
 
         Returns
         -------
         GoesScan
-            A `GoesScan` object of the scan occuring directly before this scan's time.
+            A `GoesScan` object of the previous scan matching parameters.
         """
-        raise NotImplementedError
+        if days + hours + minutes == 0:
+            minutes = utilities.REGION_TIME_RESOLUTION_MINUTES[self.region]
 
-    def plot(self, bands):
+        return get_goes_scan(
+            satellite=self.satellite,
+            region=self.region,
+            scan_time_utc=self.scan_time_utc
+            - datetime.timedelta(days=days, hours=hours, minutes=minutes),
+        )
+
+    def plot(self, bands, use_radiance=False):
         """Plot the specified bands.
 
         Parameters
         ----------
         bands : list of int
             Each element must be between 1 and 16 inclusive.
+        use_radiance : bool
+            Optional, whether to plot the spectral radiance. Defaults to `False`, which
+            will plot either the reflectance factor or the brightness temperature
+            depending on the band.
 
         Returns
         -------
-        plt.figure.Figure, np.ndarray of plt.axes._subplots.AxesSubplot
+        list of plt.image.AxesImage
         """
-        raise NotImplementedError
+        _assert_correct_bands(bands=bands)
+        max_cols = 3
+
+        num_bands = len(bands)
+        num_cols = min([num_bands, max_cols])
+        num_rows = math.ceil(num_bands / max_cols)
+        _, axes = plt.subplots(
+            ncols=num_cols, nrows=num_rows, figsize=(10 * num_cols, 8 * num_rows)
+        )
+        axes = np.ravel(axes)
+        axes_images = []
+        for axis, band_id in zip(axes, bands):
+            axis_image = self[f"band_{band_id}"].plot(
+                axis=axis, use_radiance=use_radiance
+            )
+            axes_images.append(axis_image)
+
+        plt.tight_layout()
+
+        empty_plots = (num_cols * num_rows) - num_bands
+        for axis in axes[-empty_plots:]:
+            axis.axis("off")
+
+        return axes_images
+
+
+def _assert_correct_bands(bands):
+    if set(bands) - set(range(1, 17)):
+        raise ValueError(f"Some invalid bands (got {bands}")
 
 
 def _assert_no_missing_bands(bands):
