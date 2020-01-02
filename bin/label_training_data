@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+import json
+import logging
+import os
+
+import click
+
+from wildfire import goes, threshold_model
+
+DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S"]
+
+logging.basicConfig(level=logging.INFO)
+_logger = logging.getLogger(__name__)
+
+
+@click.command()
+@click.argument("satellite", type=click.Choice(["G16", "G17"]))
+@click.argument("region", type=click.Choice(["M1", "M2", "C", "F"]))
+@click.argument("start", type=click.DateTime(formats=DATETIME_FORMATS))
+@click.argument("end", type=click.DateTime(formats=DATETIME_FORMATS))
+@click.argument("persist_directory", type=click.Path(exists=True, file_okay=False))
+def label(satellite, region, start, end, persist_directory):
+    """Label GOES satellite data matching parameters with wildfires.
+
+    `bin/label_satellite_data G16 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 labeled_data`
+
+    SATELLITE must be in the set (G16, G17). e.g. G16\n
+    REGION be in the set (M1, M2, F, C). e.g. M1\n
+    START must be in the following format: YYYY-MM-DDTHH:MM:SS. e.g. 2019-01-01T10:55:30\n
+    END must be in the following format: YYYY-MM-DDTHH:MM:SS. e.g. 2019-01-01T10:55:30\n
+    PERSIST_DIRECTORY is a path to a local directory at which to persist scans. Directory
+    must already exist. e.g. ./downloaded_data\n
+    """
+    _logger.info(
+        """Downloading available GOES satellite data fulfilling parameters:
+    Satellite: %s
+    Region: %s
+    Start Time: %s
+    End Time: %s""",
+        satellite,
+        region,
+        start,
+        end,
+    )
+    goes_sequence = goes.get_goes_sequence(
+        satellite=satellite, region=region, start_time_utc=start, end_time_utc=end
+    )
+    wildfires = {}
+    current_wildfire_idx = 0
+    for _, goes_scan in goes_sequence.iteritems():
+        model_features = threshold_model.model.get_features(goes_scan=goes_scan)
+        model_predictions = threshold_model.model.predict(
+            is_hot=model_features.is_hot,
+            is_cloud=model_features.is_cloud,
+            is_night=model_features.is_night,
+            is_water=model_features.is_water,
+        )
+        is_wildfire_predicted = model_predictions.mean() > 0
+        if is_wildfire_predicted:
+            wildfires[current_wildfire_idx] = {
+                "region": goes_scan.region,
+                "satellite": goes_scan.satellite,
+                "scan_time_utc": goes_scan.scan_time_utc,
+            }
+            current_wildfire_idx += 1
+
+    with open(
+        os.path.join(
+            persist_directory, f"{satellite}_{region}_{start}_{end}_wildfires.json"
+        ),
+        "w+",
+    ) as buffer:
+        json.dump(wildfires, buffer)
+
+    _logger.info("Success. Found %s scans with wildfires.", len(wildfires))
+
+
+if __name__ == "__main__":
+    label()
