@@ -13,7 +13,7 @@ def reflective_band():
         os.path.join(
             "tests",
             "resources",
-            "test_scan",
+            "test_scan_wildfire",
             "OR_ABI-L1b-RadM1-M6C01_G17_s20193002000275_e20193002000332_c20193002000379.nc",
         )
     )
@@ -25,17 +25,29 @@ def emissive_band():
         os.path.join(
             "tests",
             "resources",
-            "test_scan",
+            "test_scan_wildfire",
             "OR_ABI-L1b-RadM1-M6C07_G17_s20193002000275_e20193002000344_c20193002000390.nc",
         )
     )
 
 
 @pytest.fixture()
-def all_bands():
+def all_bands_wildfire():
     return [
         xr.open_dataset(filepath)
-        for filepath in glob.glob(os.path.join("tests", "resources", "test_scan", "*"))
+        for filepath in glob.glob(
+            os.path.join("tests", "resources", "test_scan_wildfire", "*")
+        )
+    ]
+
+
+@pytest.fixture()
+def all_bands_no_wildfire():
+    return [
+        xr.open_dataset(filepath)
+        for filepath in glob.glob(
+            os.path.join("tests", "resources", "test_scan_no_wildfire", "*")
+        )
     ]
 
 

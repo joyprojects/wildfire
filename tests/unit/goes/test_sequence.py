@@ -5,8 +5,8 @@ import tempfile
 from wildfire import goes
 
 
-def test_sequence(all_bands):
-    goes_scan = goes.GoesScan(all_bands)
+def test_sequence(all_bands_wildfire):
+    goes_scan = goes.GoesScan(all_bands_wildfire)
 
     actual = goes.GoesSequence(scans=[goes_scan])
     assert actual.first_scan_utc == goes_scan.scan_time_utc

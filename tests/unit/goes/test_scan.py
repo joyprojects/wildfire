@@ -8,8 +8,8 @@ import pytest
 from wildfire import goes
 
 
-def test_scan(all_bands):
-    actual = goes.GoesScan(bands=all_bands)
+def test_scan(all_bands_wildfire):
+    actual = goes.GoesScan(bands=all_bands_wildfire)
     assert actual.region == "M1"
     assert actual.satellite == "noaa-goes17"
     assert actual.scan_time_utc == datetime.datetime(2019, 10, 27, 20, 0, 27, 500000)
@@ -23,27 +23,27 @@ def test_scan(all_bands):
             assert os.path.exists(filepath)
 
 
-def test_scan_init_bad_args(all_bands):
-    too_many_bands = all_bands + [all_bands[0]]
+def test_scan_init_bad_args(all_bands_wildfire):
+    too_many_bands = all_bands_wildfire + [all_bands_wildfire[0]]
     with pytest.raises(ValueError) as error_message:
         goes.GoesScan(bands=too_many_bands)
         assert "Too many bands" in error_message
 
-    too_few_bands = all_bands[:15]
+    too_few_bands = all_bands_wildfire[:15]
     with pytest.raises(ValueError) as error_message:
         goes.GoesScan(bands=too_few_bands)
         assert "Missing bands" in error_message
 
-    all_bands[15].attrs[
+    all_bands_wildfire[15].attrs[
         "dataset_name"
     ] = "OR_ABI-L1b-RadM1-M6C01_G16_s20193002000275_e20193002000332_c20193002000379.nc"
     with pytest.raises(ValueError) as error_message:
-        goes.GoesScan(bands=all_bands)
+        goes.GoesScan(bands=all_bands_wildfire)
         assert "must have same" in error_message
 
 
-def test_rescale_to_500m(all_bands):
-    original = goes.GoesScan(bands=all_bands)
+def test_rescale_to_500m(all_bands_wildfire):
+    original = goes.GoesScan(bands=all_bands_wildfire)
     actual = original.rescale_to_500m()
     assert isinstance(actual, goes.GoesScan)
     assert actual.satellite == original.satellite
@@ -55,6 +55,6 @@ def test_rescale_to_500m(all_bands):
 
 def test_read_netcdfs_local():
     actual = goes.read_netcdfs(
-        filepaths=glob.glob(os.path.join("tests", "resources", "test_scan", "*"))
+        filepaths=glob.glob(os.path.join("tests", "resources", "test_scan_wildfire", "*"))
     )
     assert isinstance(actual, goes.GoesScan)

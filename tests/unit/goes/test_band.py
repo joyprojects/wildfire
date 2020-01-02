@@ -63,7 +63,7 @@ def test_from_netcdf_local():
         filepath=os.path.join(
             "tests",
             "resources",
-            "test_scan",
+            "test_scan_wildfire",
             "OR_ABI-L1b-RadM1-M6C07_G17_s20193002000275_e20193002000344_c20193002000390.nc",
         )
     )

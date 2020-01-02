@@ -164,10 +164,10 @@ class GoesBand:
         xr.core.dataarray.DataArray
         """
         if use_radiance:
-            return (self.dataset.Rad - self.dataset.Rad.mean()) / self.dataset.Rad.std()
+            return utilities.normalize(self.dataset.Rad)
 
         parsed_data = self.parse()
-        return (parsed_data - parsed_data.mean()) / parsed_data.std()
+        return utilities.normalize(parsed_data)
 
     def parse(self):
         """Parse spectral radiance into appropriate units.

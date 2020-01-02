@@ -186,6 +186,12 @@ class GoesScan:
         And so, it is sometimes important to downscale all bands to be in the same
         spatial resolution.
 
+        Notes
+        -----
+        We are currently ignoring the fact that after rescaling the X and Y coordinates
+        across the different bands don't correspond. We rely on the fact that they are
+        close enough to each other, however, this could open up problems in the future.
+
         Returns
         -------
         GoesScan

@@ -13,6 +13,20 @@ SATELLITE_CONVERSION = {
 REGION_TIME_RESOLUTION_MINUTES = {"M1": 1, "M2": 1, "C": 5, "F": 15}
 
 
+def normalize(data):
+    """Normalize data to be centered around 0.
+
+    Parameters
+    ----------
+    data : np.ndarray | xr.core.dataarray.DataArray
+
+    Returns
+    -------
+    np.ndarray | xr.core.dataarray.DataArray
+    """
+    return (data - data.mean()) / data.std()
+
+
 def find_scans_closest_to_time(s3_scans, desired_time):
     """Find all scans in set with the closest scan start time to the desired time.
 

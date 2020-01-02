@@ -1,5 +1,8 @@
 import datetime
 
+import numpy as np
+import scipy.stats as st
+
 from wildfire.goes import utilities
 
 
@@ -10,3 +13,10 @@ def test_parse_filename():
     assert actual[1] == 14
     assert actual[2] == "noaa-goes17"
     assert actual[3] == datetime.datetime(2019, 10, 27, 20, 48, 27, 500000)
+
+
+def test_normalize():
+    x = np.array([1, 2, 3, 4, 5])
+    actual = utilities.normalize(data=x)
+    expected = st.zscore(x)
+    np.testing.assert_array_equal(actual, expected)
