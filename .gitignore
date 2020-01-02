@@ -3,4 +3,3 @@
 build/
 dist/
 dask-worker-space/
-documentation/notebooks/output
