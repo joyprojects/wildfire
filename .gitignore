@@ -3,3 +3,4 @@
 build/
 dist/
 dask-worker-space/
+documentation/notebooks/temporary_output
