@@ -1,7 +1,13 @@
 """Wrapper around the a single band's data from a GOES satellite scan."""
-import numpy as np
+import datetime
+import os
+import urllib
 
-from . import utilities
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+
+from . import downloader, utilities
 
 
 def get_goes_band(satellite, region, band, scan_time_utc):
@@ -10,7 +16,7 @@ def get_goes_band(satellite, region, band, scan_time_utc):
     Parameters
     ----------
     satellite : str
-        Must be in the set (G16, G17).
+        Must be in the set (noaa-goes16, noaa-goes17).
     region : str
         Must be in the set (C, F, M1, M2).
     band : int
@@ -22,7 +28,19 @@ def get_goes_band(satellite, region, band, scan_time_utc):
     -------
     GoesBand
     """
-    raise NotImplementedError
+    s3_object = downloader.query_s3(
+        satellite=satellite,
+        regions=[region],
+        channels=[band],
+        start=scan_time_utc,
+        end=scan_time_utc + datetime.timedelta(minutes=1),
+    )
+    if len(s3_object) != 1:
+        raise ValueError("Could not find a specific scan matching parameters")
+
+    s3_object = s3_object[0]
+    dataset = downloader.read_s3(s3_bucket=s3_object.bucket_name, s3_key=s3_object.key)
+    return GoesBand(dataset=dataset)
 
 
 def from_netcdf(filepath):
@@ -31,13 +49,20 @@ def from_netcdf(filepath):
     Parameters
     ----------
     filepath : str
-        May either be a local filepath, or an Amazon S3 URI.
+        May be a local filepath, or an Amazon S3 URI.
 
     Returns
     -------
     GoesBand
     """
-    raise NotImplementedError
+    if filepath.startswith("s3://"):
+        s3_url = urllib.parse.urlparse(filepath)
+        dataset = downloader.read_s3(
+            s3_bucket=s3_url.netloc, s3_key=s3_url.path.lstrip("/")
+        )
+    else:  # local
+        dataset = xr.open_dataset(filepath)
+    return GoesBand(dataset=dataset)
 
 
 class GoesBand:
@@ -74,7 +99,7 @@ class GoesBand:
         ) = utilities.parse_filename(filename=dataset.dataset_name)
         self.band_wavelength_micrometers = dataset.band_wavelength.data[0]
 
-    def plot(self, use_radiance=False):
+    def plot(self, axis=None, use_radiance=False, **imshow_kwargs):
         """Plot the band.
 
         If not plotting the radiance, will plot the reflectance factor for bands 1 - 6,
@@ -82,6 +107,9 @@ class GoesBand:
 
         Parameters
         ----------
+        axis : plt.axes._subplots.AxesSubplot
+            Optional, axis to draw on. Defaults to `None`. If `None`, which causes the
+            method to create its own axis object.
         use_radiance : bool
             Optional, whether to plot the spectral radiance. Defaults to `False`, which
             will plot either the reflectance factor or the brightness temperature
@@ -89,9 +117,17 @@ class GoesBand:
 
         Returns
         -------
-        plt.axes._subplots.AxesSubplot
+        plt.image.AxesImage
         """
-        raise NotImplementedError
+        if axis is None:
+            _, axis = plt.subplots()
+
+        if use_radiance:
+            data = self.dataset.Rad
+        else:
+            data = self.parse()
+
+        return axis.imshow(data, **imshow_kwargs)
 
     def normalize(self, use_radiance=False):
         """Normalize data to be centered around 0.
@@ -119,8 +155,8 @@ class GoesBand:
     def parse(self):
         """Parse spectral radiance into appropriate units.
 
-        Will parse into reflectance factor for bands 1 - 6, and brightness temperature
-        for bands 7 - 16.
+        Will parse into reflectance factor for the reflective bands (1 - 6), and
+        brightness temperature for emissive bands (7 - 16).
 
         Returns
         -------
@@ -138,11 +174,6 @@ class GoesBand:
         For more information, see the Reflective Channels section at
         https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/noaa_goes_documentation.ipynb
 
-        Raises
-        ------
-        ValueError
-            If the band is not between 1 and 6 inclusive.
-
         Returns
         -------
         xr.core.dataarray.DataArray
@@ -155,11 +186,6 @@ class GoesBand:
 
         For more information, see the Emissive Channels section at
         https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/noaa_goes_documentation.ipynb
-
-        Raises
-        ------
-        ValueError
-            If the band is not between 7 and 16 inclusive.
 
         Returns
         -------
@@ -185,11 +211,12 @@ class GoesBand:
         Returns
         -------
         GoesBand
-            A `GoesBand` object of data with a 0 or 1 DQF.
+            A `GoesBand` object where the spectral radiance (`Rad`) of any pixel with DQF
+            greater than 1 is set to `np.nan`.
         """
-        raise NotImplementedError
+        return GoesBand(dataset=self.dataset.where(self.dataset.DQF.isin([0, 1])))
 
-    def to_netcdf(self):
+    def to_netcdf(self, directory):
         """Persist to netcdf4.
 
         Persists file in a form matching the file struture in Amazon S3:
@@ -208,4 +235,18 @@ class GoesBand:
         str
             The filepath of the persisted file.
         """
-        raise NotImplementedError
+        local_filepath = os.path.join(
+            directory,
+            self.satellite,
+            f"ABI-L1b-Rad{self.region[0]}",
+            str(self.scan_time_utc.year),
+            self.scan_time_utc.strftime("%j"),
+            self.scan_time_utc.strftime("%H"),
+            self.dataset.dataset_name,
+        )
+        os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
+        self.dataset.to_netcdf(
+            path=local_filepath,
+            encoding={"x": {"dtype": "float32"}, "y": {"dtype": "float32"}},
+        )
+        return local_filepath

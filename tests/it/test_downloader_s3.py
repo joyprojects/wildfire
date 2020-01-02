@@ -7,23 +7,24 @@ import xarray as xr
 
 from wildfire.goes import downloader
 
-S3_BUCKET = "noaa-goes17"
-S3_KEY = "ABI-L1b-RadM/2019/001/00/OR_ABI-L1b-RadM1-M3C01_G17_s20190010000270_e20190010000327_c20190010000358.nc"
 
-
-def test_persist_s3():
+def test_persist_s3(s3_bucket_key):
     with tempfile.TemporaryDirectory() as temp_dir:
         actual = downloader.persist_s3(
-            s3_bucket=S3_BUCKET, s3_key=S3_KEY, local_directory=temp_dir
+            s3_bucket=s3_bucket_key["bucket"],
+            s3_key=s3_bucket_key["key"],
+            local_directory=temp_dir,
         )
         assert os.path.exists(actual)
 
         actual = xr.open_dataset(filename_or_obj=actual)
-        assert actual.dataset_name == os.path.basename(S3_KEY)
+        assert actual.dataset_name == os.path.basename(s3_bucket_key["key"])
 
 
-def test_read_s3():
-    actual = downloader.read_s3(s3_bucket=S3_BUCKET, s3_key=S3_KEY)
+def test_read_s3(s3_bucket_key):
+    actual = downloader.read_s3(
+        s3_bucket=s3_bucket_key["bucket"], s3_key=s3_bucket_key["key"]
+    )
     assert isinstance(actual, xr.core.dataset.Dataset)
 
 
@@ -38,9 +39,11 @@ def test_query_s3():
     assert len(actual) == 60
 
 
-def test_download_batch():
+def test_download_batch(s3_bucket_key):
     s3 = boto3.resource("s3")
-    test_object = s3.ObjectSummary(bucket_name=S3_BUCKET, key=S3_KEY)
+    test_object = s3.ObjectSummary(
+        bucket_name=s3_bucket_key["bucket"], key=s3_bucket_key["key"]
+    )
     with tempfile.TemporaryDirectory() as temp_dir:
         actual = downloader.download_batch(
             s3_object_summaries=[test_object], local_directory=temp_dir,

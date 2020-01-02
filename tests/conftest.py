@@ -26,7 +26,7 @@ def emissive_band():
             "tests",
             "resources",
             "test_scan",
-            "OR_ABI-L1b-RadM1-M6C11_G17_s20193002000275_e20193002000332_c20193002000375.nc",
+            "OR_ABI-L1b-RadM1-M6C07_G17_s20193002000275_e20193002000344_c20193002000390.nc",
         )
     )
 
@@ -37,3 +37,11 @@ def all_bands():
         xr.open_dataset(filepath)
         for filepath in glob.glob(os.path.join("tests", "resources", "test_scan", "*"))
     ]
+
+
+@pytest.fixture()
+def s3_bucket_key():
+    return {
+        "bucket": "noaa-goes17",
+        "key": "ABI-L1b-RadM/2019/001/00/OR_ABI-L1b-RadM1-M3C01_G17_s20190010000270_e20190010000327_c20190010000358.nc",
+    }

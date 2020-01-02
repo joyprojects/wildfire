@@ -14,34 +14,32 @@ def test_make_necessary_directories():
         assert os.path.exists(file_path)
 
 
-def test_is_good_object():
-    key = "/ABI-L1b-RadM/2019/300/20/OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc"
-
+def test_is_good_object(s3_bucket_key):
     assert downloader._is_good_object(
-        key=key,
-        regions=["M1"],
-        channels=[14],
-        start=datetime.datetime(2019, 1, 1),
-        end=datetime.datetime(2019, 12, 1),
-    )
-    assert not downloader._is_good_object(
-        key=key,
-        regions=["M2"],
-        channels=[14],
-        start=datetime.datetime(2019, 1, 1),
-        end=datetime.datetime(2019, 12, 1),
-    )
-    assert not downloader._is_good_object(
-        key=key,
+        key=s3_bucket_key["key"],
         regions=["M1"],
         channels=[1],
         start=datetime.datetime(2019, 1, 1),
         end=datetime.datetime(2019, 12, 1),
     )
     assert not downloader._is_good_object(
-        key=key,
+        key=s3_bucket_key["key"],
+        regions=["M2"],
+        channels=[1],
+        start=datetime.datetime(2019, 1, 1),
+        end=datetime.datetime(2019, 12, 1),
+    )
+    assert not downloader._is_good_object(
+        key=s3_bucket_key["key"],
         regions=["M1"],
         channels=[14],
+        start=datetime.datetime(2019, 1, 1),
+        end=datetime.datetime(2019, 12, 1),
+    )
+    assert not downloader._is_good_object(
+        key=s3_bucket_key["key"],
+        regions=["M1"],
+        channels=[1],
         start=datetime.datetime(2019, 11, 1),
         end=datetime.datetime(2019, 12, 1),
     )
