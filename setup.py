@@ -11,8 +11,8 @@ def get_version():
 setup(
     name="wildfire",
     version=get_version(),
-    url="https://github.com/Ferrumofomega/goes",
-    author="",
+    url="https://github.com/joyprojects/wildfire",
+    author="Joy Projects",
     author_email="",
     packages=find_packages(),
     include_package_data=True,
@@ -20,5 +20,5 @@ setup(
     tests_require=open("requirements-dev.in").readlines(),
     description="Modelling characteristics of wildfires",
     long_description="\n" + open("README.md").read(),
-    scripts=["bin/download_satellite_data"],
+    scripts=["bin/download_satellite_data", "bin/label_training_data"],
 )

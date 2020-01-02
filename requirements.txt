@@ -54,7 +54,6 @@ sortedcontainers==2.1.0   # via distributed
 tblib==1.5.0              # via distributed
 toolz==0.10.0             # via distributed
 tornado==6.0.3            # via bokeh, distributed
-tqdm==4.39.0
 typed-ast==1.4.0          # via astroid
 urllib3==1.25.7           # via botocore
 wcwidth==0.1.7            # via pytest

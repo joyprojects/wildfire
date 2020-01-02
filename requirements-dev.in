@@ -1,5 +1,6 @@
-bokeh ~= 1.4
+black == 19.10b0
 pip-tools ~= 4.2
 pydocstyle ~= 4.0
 pylint ~= 2.4
 pytest-cov ~= 2.8
+scipy ~= 1.4

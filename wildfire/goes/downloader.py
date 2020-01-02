@@ -9,12 +9,10 @@ or boto3's documentation at https://boto3.amazonaws.com/v1/documentation/api/lat
 """
 import datetime
 import logging
-import math
 import os
 import tempfile
 
 import boto3
-from tqdm import tqdm
 import xarray as xr
 
 from . import utilities
@@ -148,31 +146,12 @@ def _is_good_object(key, regions, channels, start, end):
     -------
     Boolean
     """
-    region, channel, _, scan_started_at = utilities.parse_filename(filepath=key)
+    region, channel, _, scan_started_at = utilities.parse_filename(filename=key)
     return (
         (region in regions)
         and (channel in channels)
         and (start <= scan_started_at <= end)
     )
-
-
-def _num_hours_to_check(start, end):
-    """Calculate the number of hours of scand to retrieve from Amazon S3.
-
-    Parameters
-    ----------
-    start : datetime.datetime
-        Start of date range.
-    end : datetime.datetime
-        End of date range.
-
-    Returns
-    -------
-    int
-        The number of hours to retrieve from Amazon S3 rounded up to nearest hour. This is
-        primarily used as a range for tqdm's progressbar.
-    """
-    return math.ceil((end - start).total_seconds() / 3600)
 
 
 def query_s3(satellite, regions, channels, start, end):
@@ -191,7 +170,7 @@ def query_s3(satellite, regions, channels, start, end):
 
     Returns
     -------
-    list[boto3.resources.factory.s3.ObjectSummary]
+    list of boto3.resources.factory.s3.ObjectSummary
     """
     _logger.info(
         """Querying for s3 objects with the following properties:
@@ -211,14 +190,11 @@ def query_s3(satellite, regions, channels, start, end):
     product_description_format = "ABI-L1b-Rad{region}"
 
     scans = []
-    for region in tqdm(regions, desc="Regions"):
+    for region in regions:
         # only use the first character from region (M1 or M2 -> M)
         product_description = product_description_format.format(region=region[0])
 
         current = start.replace(minute=0, second=0, microsecond=0)
-        inner_progress_bar = tqdm(
-            total=_num_hours_to_check(start=current, end=end), desc="Hours"
-        )
         while current <= end:
             key_filter = key_path_format.format(
                 product_description=product_description,
@@ -239,6 +215,4 @@ def query_s3(satellite, regions, channels, start, end):
             ]
             scans += s3_scans
             current += datetime.timedelta(hours=1)
-            inner_progress_bar.update(1)
-        inner_progress_bar.close()
     return scans

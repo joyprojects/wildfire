@@ -30,10 +30,10 @@ managing python environments.
 Before starting the installation instructions, we strongly suggest doing so in an isolated
 python environment. Below are several usefule commands for doing so with conda.
 
-- `conda create --name wildfire.6 python=3.6` to create a python environment for this project
-- `source activate wildfire.6` to activate the python environment
+- `conda create --name wildfire3.7 python=3.7` to create a python environment for this project
+- `source activate wildfire3.7` to activate the python environment
 - `source deactivate` to deactivate the python environment
-- `conda remove --name wildfire.6 --all` to destroy the python environment (must deactivate first)
+- `conda remove --name wildfire3.7 --all` to destroy the python environment (must deactivate first)
 
 ### Instructions
 
