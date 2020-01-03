@@ -7,11 +7,43 @@ import urllib
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+import multiprocessing
 
 from . import downloader, utilities
 from .band import GoesBand
 
 _logger = logging.getLogger(__name__)
+
+
+def get_goes_scans(satellite, region, scan_times_utc):
+    """"
+    Get the GoesScans matching parameters in parallel.
+
+    Retrieves the closest scan to `scan_time_utc` matching the `satellite` and `region`
+    from Amazon S3.
+
+    For performance improvement, we use the fact that we know how often the satellite
+    produces a scan to limit the window of our search. For example, there is a CONUS
+    satellite scan every 5 minutes, so we search a 10 minute window centered on
+    `scan_time_utc`.
+
+    Parameters:
+    __________
+    satellite : str
+        Must be in the set (G16, G17).
+    region : str
+        Must be in the set (C, F, M1, M2).
+    scan_times_utc : list of datetime.datetime
+        Datetime of the scans. Datetimes must be specified to the minute.
+
+    """
+    args = []
+    for scan_time_utc in scan_times_utc:
+        args.append([satellite, region, scan_time_utc])
+
+    pool = multiprocessing.Pool(multiprocessing.cpu_count())
+    file_paths = pool.starmap(get_goes_scan, scan_times_utc)
+    return file_paths
 
 
 def get_goes_scan(satellite, region, scan_time_utc):
