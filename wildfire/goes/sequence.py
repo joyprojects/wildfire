@@ -1,6 +1,9 @@
 """Wrapper around a time series of GOES satellite scans."""
 import datetime
 import logging
+import multiprocessing
+
+import boto3
 
 from .scan import GoesScan, read_netcdfs
 from . import downloader, utilities
@@ -9,7 +12,7 @@ _logger = logging.getLogger(__name__)
 
 
 def get_goes_sequence(
-    satellite, region, start_time_utc, end_time_utc, max_scans_per_hour=None
+    satellite, region, start_time_utc, end_time_utc, max_scans_per_hour=None, threads=None
 ):
     """Get the GoesSequence corresponding to the input.
 
@@ -24,9 +27,12 @@ def get_goes_sequence(
     end_time_utc : datetime.datetime
         Datetime of the last scan. Must be specified to the minute.
     max_scans_per_hour : int
-        Optional, maximum number of scans to get per hout. Defaults to `None` which will
+        Optional, maximum number of scans to get per hour. Defaults to `None` which will
         get all scans available. The number of scans available per hour is also dependent
         on the region scanned.
+    threads : int
+        Optional, maximum number of threads to use in parallel. Defaults to `None` which
+        will use the number of cores available to set the number of threads.
 
     Returns
     -------
@@ -35,6 +41,9 @@ def get_goes_sequence(
     if max_scans_per_hour is None:
         max_scans_per_hour = -1
 
+    threads = threads if not None else multiprocessing.cpu_count()
+    _logger.info("Using %s threads to gather GoesSequences.", threads)
+
     s3_objects = downloader.query_s3(
         satellite=satellite,
         regions=[region],
@@ -42,6 +51,7 @@ def get_goes_sequence(
         start=start_time_utc,
         end=end_time_utc,
     )
+    s3_objects = [(s3_object.bucket_name, s3_object.key) for s3_object in s3_objects]
 
     if len(s3_objects) == 0:
         raise ValueError(f"Could not find well-formed scans matching parameters")
@@ -49,27 +59,71 @@ def get_goes_sequence(
     time_resolution = max(
         [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
     )
-    current_time_utc = start_time_utc
-    scans = []
-    while current_time_utc <= end_time_utc:
-        _logger.info("Finding scan close to %s", current_time_utc)
-        closest_scan_objects = utilities.find_scans_closest_to_time(
-            s3_scans=s3_objects, desired_time=current_time_utc
-        )
-        if len(closest_scan_objects) != 16:
-            _logger.warning("Could not find well-formed scan near %s", current_time_utc)
-            continue
+    scan_times_utc = _create_range_of_utc_times(
+        start_time_utc=start_time_utc,
+        end_time_utc=end_time_utc,
+        time_resolution_minutes=time_resolution,
+    )
+    pool = multiprocessing.Pool(threads)
+    scans = pool.starmap(
+        func=_download_sequence,
+        iterable=[[s3_objects, scan_time] for scan_time in scan_times_utc],
+    )
+    return GoesSequence(scans=[scan for scan in scans if scan is not None])
 
-        scans.append(
-            read_netcdfs(
-                filepaths=[
-                    f"s3://{s3_obj.bucket_name}/{s3_obj.key}"
-                    for s3_obj in closest_scan_objects
-                ]
-            )
-        )
-        current_time_utc += datetime.timedelta(minutes=time_resolution)
-    return GoesSequence(scans=scans)
+
+def _download_sequence(s3_objects, scan_time):
+    """Download a GoesScan for a give scan time.
+
+    ** This function is used in starmap. Starmap requires that the arguments to this method
+    be pickle-able. Natively, s3ObjectSummaries are not pickle-able, hence we convert s3Objects to
+    and from bucket and key strings.
+
+    Parameters
+    ----------
+    s3_objects : list of tuple of (str, str)
+    scan_time : datetime.datetime
+
+    Returns
+    -------
+    wildfire.goes.GoesScan
+    """
+    _logger.info("Finding scan close to %s", scan_time)
+    s3 = boto3.resource("s3")
+    s3_objects = [s3.ObjectSummary(bucket, key) for bucket, key in s3_objects]
+    closest_scan_objects = utilities.find_scans_closest_to_time(
+        s3_scans=s3_objects, desired_time=scan_time
+    )
+    if len(closest_scan_objects) != 16:
+        _logger.warning("Could not find well-formed scan near %s", scan_time)
+        return None
+    return read_netcdfs(
+        filepaths=[
+            f"s3://{s3_obj.bucket_name}/{s3_obj.key}" for s3_obj in closest_scan_objects
+        ]
+    )
+
+
+def _create_range_of_utc_times(start_time_utc, end_time_utc, time_resolution_minutes):
+    """Create a list of times over a time period given a resolution interval.
+
+    Parameters
+    ----------
+    start_time_utc : datetime.datetime
+    end_time_utc : datetime.datetime
+    time_resolution_minutes : int
+
+    Returns
+    -------
+        list of datetime.datetime
+    """
+    utc_time_range = []
+    current_time_utc = start_time_utc
+    while current_time_utc <= end_time_utc:
+        utc_time_range.append(current_time_utc)
+        current_time_utc += datetime.timedelta(minutes=time_resolution_minutes)
+
+    return utc_time_range
 
 
 class GoesSequence:
