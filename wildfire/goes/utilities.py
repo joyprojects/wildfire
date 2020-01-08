@@ -50,8 +50,9 @@ def pool_function(function, function_args, num_workers=None):
         )
         num_workers = max_workers_allowed
     _logger.info("Pooling function '%s' over %d workers", function.__name__, num_workers)
-    pool = multiprocessing.Pool(num_workers)
-    return pool.map(func=function, iterable=function_args)
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        results = pool.map(func=function, iterable=function_args)
+    return results
 
 
 def create_time_range(start, end, minutes):
