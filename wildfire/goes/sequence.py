@@ -38,12 +38,14 @@ def get_goes_sequence(
     -------
     GoesSequence
     """
-    _logger.info("Getting GoesSequence from S3...")
-    if max_scans_per_hour is None:
-        max_scans_per_hour = -1
-
+    max_scans_per_hour = max_scans_per_hour if not None else -1
     threads = threads if not None else multiprocessing.cpu_count()
-    _logger.info("Using %s threads..", threads)
+
+    time_resolution_minutes = max(
+        [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
+    )
+
+    _logger.info("Getting GoesSequence from S3 using %s threads...", threads)
 
     s3_objects = downloader.query_s3(
         satellite=satellite,
@@ -57,13 +59,10 @@ def get_goes_sequence(
     if len(s3_objects) == 0:
         raise ValueError(f"Could not find well-formed scans matching parameters")
 
-    time_resolution = max(
-        [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
-    )
     scan_times_utc = _create_range_of_utc_times(
         start_time_utc=start_time_utc,
         end_time_utc=end_time_utc,
-        time_resolution_minutes=time_resolution,
+        time_resolution_minutes=time_resolution_minutes,
     )
     pool = multiprocessing.Pool(threads)
     scans = pool.starmap(
