@@ -38,11 +38,12 @@ def get_goes_sequence(
     -------
     GoesSequence
     """
+    _logger.info("Getting GoesSequence from S3...")
     if max_scans_per_hour is None:
         max_scans_per_hour = -1
 
     threads = threads if not None else multiprocessing.cpu_count()
-    _logger.info("Using %s threads to gather GoesSequences.", threads)
+    _logger.info("Using %s threads..", threads)
 
     s3_objects = downloader.query_s3(
         satellite=satellite,
