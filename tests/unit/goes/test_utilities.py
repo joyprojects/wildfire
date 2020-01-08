@@ -20,3 +20,11 @@ def test_normalize():
     actual = utilities.normalize(data=x)
     expected = st.zscore(x)
     np.testing.assert_array_equal(actual, expected)
+
+
+def test_create_time_range():
+    # TODO
+
+
+def test_pool_function():
+    # TODO
