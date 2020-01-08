@@ -14,6 +14,7 @@ def test_get_goes_sequence():
         start_time_utc=start_time_utc,
         end_time_utc=end_time_utc,
         max_scans_per_hour=2,
+        threads=1,
     )
     assert isinstance(actual, goes.GoesSequence)
     assert actual.region == region
