@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import multiprocessing
 
 import click
 
@@ -45,34 +46,47 @@ def label(satellite, region, start, end, persist_directory):
     goes_sequence = goes.get_goes_sequence(
         satellite=satellite, region=region, start_time_utc=start, end_time_utc=end
     )
-    wildfires = {}
-    current_wildfire_idx = 0
-    for _, goes_scan in goes_sequence.iteritems():
-        model_features = threshold_model.model.get_features(goes_scan=goes_scan)
-        model_predictions = threshold_model.model.predict(
-            is_hot=model_features.is_hot,
-            is_cloud=model_features.is_cloud,
-            is_night=model_features.is_night,
-            is_water=model_features.is_water,
-        )
-        is_wildfire_predicted = model_predictions.mean() > 0
-        if is_wildfire_predicted:
-            wildfires[current_wildfire_idx] = {
-                "region": goes_scan.region,
-                "satellite": goes_scan.satellite,
-                "scan_time_utc": goes_scan.scan_time_utc,
-            }
-            current_wildfire_idx += 1
+    pool = multiprocessing.Pool()
+    wildfires = pool.map(evaluate_threshold_model, goes_sequence)
 
     with open(
-        os.path.join(
-            persist_directory, f"{satellite}_{region}_{start}_{end}_wildfires.json"
-        ),
-        "w+",
+            os.path.join(
+                persist_directory, f"{satellite}_{region}_{start}_{end}_wildfires.json"
+            ),
+            "w+",
     ) as buffer:
         json.dump(wildfires, buffer)
 
     _logger.info("Success. Found %s scans with wildfires.", len(wildfires))
+
+
+def evaluate_threshold_model(goes_scan):
+    """Parameters
+    ----------
+    goes_scan: GoesScan
+
+    Returns
+    -------
+    Dictionary
+    """
+    wildfires = {}
+    current_wildfire_idx = 0
+    model_features = threshold_model.model.get_features(goes_scan=goes_scan)
+    model_predictions = threshold_model.model.predict(
+        is_hot=model_features.is_hot,
+        is_cloud=model_features.is_cloud,
+        is_night=model_features.is_night,
+        is_water=model_features.is_water,
+    )
+    is_wildfire_predicted = model_predictions.mean() > 0
+    if is_wildfire_predicted:
+        wildfires[current_wildfire_idx] = {
+            "region": goes_scan.region,
+            "satellite": goes_scan.satellite,
+            "scan_time_utc": goes_scan.scan_time_utc,
+        }
+        current_wildfire_idx += 1
+    return wildfires
 
 
 if __name__ == "__main__":
