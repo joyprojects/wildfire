@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import multiprocessing
 
 import click
 
@@ -45,24 +46,9 @@ def label(satellite, region, start, end, persist_directory):
     goes_sequence = goes.get_goes_sequence(
         satellite=satellite, region=region, start_time_utc=start, end_time_utc=end
     )
-    wildfires = {}
-    current_wildfire_idx = 0
-    for _, goes_scan in goes_sequence.iteritems():
-        model_features = threshold_model.model.get_features(goes_scan=goes_scan)
-        model_predictions = threshold_model.model.predict(
-            is_hot=model_features.is_hot,
-            is_cloud=model_features.is_cloud,
-            is_night=model_features.is_night,
-            is_water=model_features.is_water,
-        )
-        is_wildfire_predicted = model_predictions.mean() > 0
-        if is_wildfire_predicted:
-            wildfires[current_wildfire_idx] = {
-                "region": goes_scan.region,
-                "satellite": goes_scan.satellite,
-                "scan_time_utc": goes_scan.scan_time_utc,
-            }
-            current_wildfire_idx += 1
+    pool = multiprocessing.Pool()  # default to the number of cores available
+    wildfires = pool.map(evaluate_threshold_model, goes_sequence)
+    wildfires_serialized = dict(enumerate(wildfires))
 
     with open(
         os.path.join(
@@ -70,9 +56,37 @@ def label(satellite, region, start, end, persist_directory):
         ),
         "w+",
     ) as buffer:
-        json.dump(wildfires, buffer)
+        json.dump(wildfires_serialized, buffer)
 
-    _logger.info("Success. Found %s scans with wildfires.", len(wildfires))
+    _logger.info("Success. Found %s scans with wildfires.", len(wildfires_serialized))
+
+
+def evaluate_threshold_model(goes_scan):
+    """Evaluate whether a wildfire appears on the `goes_scan`.
+
+    Parameters
+    ----------
+    goes_scan: wildfire.goes.scan.GoesScan
+
+    Returns
+    -------
+    dict
+    """
+    model_features = threshold_model.model.get_features(goes_scan=goes_scan)
+    model_predictions = threshold_model.model.predict(
+        is_hot=model_features.is_hot,
+        is_cloud=model_features.is_cloud,
+        is_night=model_features.is_night,
+        is_water=model_features.is_water,
+    )
+    is_wildfire_predicted = model_predictions.mean() > 0
+    if is_wildfire_predicted:
+        return {
+            "region": goes_scan.region,
+            "satellite": goes_scan.satellite,
+            "scan_time_utc": goes_scan.scan_time_utc,
+        }
+    return None
 
 
 if __name__ == "__main__":

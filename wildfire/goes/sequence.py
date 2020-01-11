@@ -1,5 +1,4 @@
 """Wrapper around a time series of GOES satellite scans."""
-import datetime
 import logging
 
 from .scan import GoesScan, read_netcdfs
@@ -9,14 +8,14 @@ _logger = logging.getLogger(__name__)
 
 
 def get_goes_sequence(
-    satellite, region, start_time_utc, end_time_utc, max_scans_per_hour=None
+    satellite, region, start_time_utc, end_time_utc, max_scans_per_hour=None, threads=None
 ):
     """Get the GoesSequence corresponding to the input.
 
     Parameters
     ----------
     satellite : str
-        Must be in the set (G16, G17).
+        Must be in the set (noaa-goes16, noaa-goes17).
     region : str
         Must be in the set (C, F, M1, M2).
     start_time_utc : datetime.datetime
@@ -24,17 +23,26 @@ def get_goes_sequence(
     end_time_utc : datetime.datetime
         Datetime of the last scan. Must be specified to the minute.
     max_scans_per_hour : int
-        Optional, maximum number of scans to get per hout. Defaults to `None` which will
+        Optional, maximum number of scans to get per hour. Defaults to `None` which will
         get all scans available. The number of scans available per hour is also dependent
         on the region scanned.
+    threads : int
+        Optional, maximum number of workers to use in parallel. Defaults to `None` which
+        will use the number of cores available.
 
     Returns
     -------
     GoesSequence
     """
-    if max_scans_per_hour is None:
-        max_scans_per_hour = -1
+    _logger.info("Getting GoesSequence from S3...")
 
+    max_scans_per_hour = max_scans_per_hour if not None else -1
+    time_resolution_minutes = max(
+        [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
+    )
+    scan_times = utilities.create_time_range(
+        start=start_time_utc, end=end_time_utc, minutes=time_resolution_minutes,
+    )
     s3_objects = downloader.query_s3(
         satellite=satellite,
         regions=[region],
@@ -42,34 +50,31 @@ def get_goes_sequence(
         start=start_time_utc,
         end=end_time_utc,
     )
-
     if len(s3_objects) == 0:
         raise ValueError(f"Could not find well-formed scans matching parameters")
 
-    time_resolution = max(
-        [60 // max_scans_per_hour, (utilities.REGION_TIME_RESOLUTION_MINUTES[region])]
+    sequence_filepaths_s3 = _get_scan_filepaths_in_sequence(
+        s3_objects=s3_objects, scan_times_utc=scan_times
     )
-    current_time_utc = start_time_utc
-    scans = []
-    while current_time_utc <= end_time_utc:
-        _logger.info("Finding scan close to %s", current_time_utc)
-        closest_scan_objects = utilities.find_scans_closest_to_time(
-            s3_scans=s3_objects, desired_time=current_time_utc
-        )
-        if len(closest_scan_objects) != 16:
-            _logger.warning("Could not find well-formed scan near %s", current_time_utc)
-            continue
+    scans = utilities.pool_function(
+        function=read_netcdfs,
+        function_args=list(sequence_filepaths_s3),
+        num_workers=threads,
+    )
+    return GoesSequence(scans=scans)
 
-        scans.append(
-            read_netcdfs(
-                filepaths=[
-                    f"s3://{s3_obj.bucket_name}/{s3_obj.key}"
-                    for s3_obj in closest_scan_objects
-                ]
+
+def _get_scan_filepaths_in_sequence(s3_objects, scan_times_utc):
+    """Get the closest set of scans for each scan time in `scan_times_utc`."""
+    return {  # set to remove duplicates
+        tuple(
+            f"s3://{s3_object.bucket_name}/{s3_object.key}"
+            for s3_object in utilities.find_scans_closest_to_time(
+                s3_scans=s3_objects, desired_time=scan_time_utc
             )
         )
-        current_time_utc += datetime.timedelta(minutes=time_resolution)
-    return GoesSequence(scans=scans)
+        for scan_time_utc in scan_times_utc
+    }
 
 
 class GoesSequence:
