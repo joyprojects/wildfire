@@ -46,31 +46,32 @@ def label(satellite, region, start, end, persist_directory):
     goes_sequence = goes.get_goes_sequence(
         satellite=satellite, region=region, start_time_utc=start, end_time_utc=end
     )
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool()  # default to the number of cores available
     wildfires = pool.map(evaluate_threshold_model, goes_sequence)
+    wildfires_serialized = dict(enumerate(wildfires))
 
     with open(
-            os.path.join(
-                persist_directory, f"{satellite}_{region}_{start}_{end}_wildfires.json"
-            ),
-            "w+",
+        os.path.join(
+            persist_directory, f"{satellite}_{region}_{start}_{end}_wildfires.json"
+        ),
+        "w+",
     ) as buffer:
-        json.dump(wildfires, buffer)
+        json.dump(wildfires_serialized, buffer)
 
-    _logger.info("Success. Found %s scans with wildfires.", len(wildfires))
+    _logger.info("Success. Found %s scans with wildfires.", len(wildfires_serialized))
 
 
 def evaluate_threshold_model(goes_scan):
-    """Parameters
+    """Evaluate whether a wildfire appears on the `goes_scan`.
+
+    Parameters
     ----------
-    goes_scan: GoesScan
+    goes_scan: wildfire.goes.scan.GoesScan
 
     Returns
     -------
-    Dictionary
+    dict
     """
-    wildfires = {}
-    current_wildfire_idx = 0
     model_features = threshold_model.model.get_features(goes_scan=goes_scan)
     model_predictions = threshold_model.model.predict(
         is_hot=model_features.is_hot,
@@ -80,13 +81,12 @@ def evaluate_threshold_model(goes_scan):
     )
     is_wildfire_predicted = model_predictions.mean() > 0
     if is_wildfire_predicted:
-        wildfires[current_wildfire_idx] = {
+        return {
             "region": goes_scan.region,
             "satellite": goes_scan.satellite,
             "scan_time_utc": goes_scan.scan_time_utc,
         }
-        current_wildfire_idx += 1
-    return wildfires
+    return None
 
 
 if __name__ == "__main__":
