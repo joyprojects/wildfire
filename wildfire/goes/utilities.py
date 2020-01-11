@@ -20,6 +20,9 @@ _logger = logging.getLogger(__name__)
 def pool_function(function, function_args, num_workers=None):
     """Run `function` across multiple workers in parallel.
 
+    User should read documentation on `multiprocessing.Pool` before using this method.
+    https://docs.python.org/3.7/library/multiprocessing.html
+
     Parameters
     ----------
     function : function
