@@ -1,7 +1,9 @@
 """Utilities to use across modules in the goes sub-package."""
 import datetime
-import re
+import logging
+import multiprocessing
 import os
+import re
 
 import numpy as np
 
@@ -11,6 +13,71 @@ SATELLITE_CONVERSION = {
     "G17": "noaa-goes17",
 }
 REGION_TIME_RESOLUTION_MINUTES = {"M1": 1, "M2": 1, "C": 5, "F": 15}
+
+_logger = logging.getLogger(__name__)
+
+
+def pool_function(function, function_args, num_workers=None):
+    """Run `function` across multiple workers in parallel.
+
+    User should read documentation on `multiprocessing.Pool` before using this method.
+    https://docs.python.org/3.7/library/multiprocessing.html
+
+    Parameters
+    ----------
+    function : function
+        Function to pool across multiple threads.
+    function_args : iterable
+        Arguments to iteratively pass to `function` across multiple threads. All elements
+        must be pickleable.
+    num_workers : int
+        Optional, the number of workers over which to pool `function`. Defaults to `None`
+        in which case it will be set to the number of cores on the machine. If not `None`,
+        it must be less than or equal to the number of cores available on the machine.
+
+    Returns
+    -------
+    list of Any
+        An iterator over the return values of `function` across the number of threads.
+        Length is `num_workers`.
+    """
+    max_workers_allowed = multiprocessing.cpu_count()
+    num_workers = num_workers if num_workers is not None else max_workers_allowed
+
+    if num_workers > max_workers_allowed:
+        _logger.info(
+            "Setting `num_threads` from %d to %d, since machine has %d cores.",
+            num_workers,
+            max_workers_allowed,
+            max_workers_allowed,
+        )
+        num_workers = max_workers_allowed
+    _logger.info("Pooling function '%s' over %d workers", function.__name__, num_workers)
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        results = pool.map(func=function, iterable=function_args)
+    return results
+
+
+def create_time_range(start, end, minutes):
+    """Create time range from `start` to `end` .
+
+    Parameters
+    ----------
+    start : datetime.datetime
+    end : datetime.datetime
+    minutes : int
+        Number of minutes to add to the previous datetime element to get the next one.
+
+    Returns
+    -------
+        list of datetime.datetime
+    """
+    time_range = []
+    current = start
+    while current <= end:
+        time_range.append(current)
+        current += datetime.timedelta(minutes=minutes)
+    return time_range
 
 
 def normalize(data):
@@ -31,7 +98,7 @@ def find_scans_closest_to_time(s3_scans, desired_time):
     """Find all scans in set with the closest scan start time to the desired time.
 
     If multiple bands were requested when producing `s3_scans` then that the number
-    of bansd requested should match the number of scans returned by this method.
+    of bands requested should match the number of scans returned by this method.
 
     Parameters
     ----------
