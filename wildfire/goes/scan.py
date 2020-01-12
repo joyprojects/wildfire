@@ -70,7 +70,7 @@ def read_netcdfs(filepaths):
     -------
     GoesScan
     """
-    _logger.info("Building Scan from files...")
+    _logger.info("Building scan from %d files...", len(filepaths))
     datasets = []
     for filepath in filepaths:
         if filepath.startswith("s3://"):  # s3
