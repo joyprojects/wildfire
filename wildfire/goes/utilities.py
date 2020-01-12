@@ -107,7 +107,7 @@ def find_scans_closest_to_times(s3_scans, desired_times):
 
     Returns
     -------
-    list of str
+    np.ndarray of str
         Where each element is the S3 file path.
     """
     scan_times = np.array([parse_filename(s3_scan.key)[3] for s3_scan in s3_scans])
@@ -115,7 +115,7 @@ def find_scans_closest_to_times(s3_scans, desired_times):
         np.argmin(np.abs([scan_times - scan_time for scan_time in desired_times]), axis=1)
     ]
     closest_scans = [
-        np.array(s3_scans)[np.where(scan_times == closest_time)].tolist()
+        np.array(s3_scans)[np.where(scan_times == closest_time)]
         for closest_time in closest_times
     ]
 
@@ -124,7 +124,7 @@ def find_scans_closest_to_times(s3_scans, desired_times):
 
     return np.vectorize(lambda s3_scan: f"s3://{s3_scan.bucket_name}/{s3_scan.key}")(
         closest_scans
-    ).tolist()
+    )
 
 
 def build_local_path(local_directory, filepath, satellite):
