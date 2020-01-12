@@ -19,16 +19,18 @@ _logger = logging.getLogger(__name__)
 @click.argument("region", type=click.Choice(["M1", "M2", "C", "F"]))
 @click.argument("start", type=click.DateTime(formats=DATETIME_FORMATS))
 @click.argument("end", type=click.DateTime(formats=DATETIME_FORMATS))
+@click.argument("end", type=int)
 @click.argument("persist_directory", type=click.Path(exists=True, file_okay=False))
-def label(satellite, region, start, end, persist_directory):
+def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
     """Label GOES satellite data matching parameters with wildfires.
 
-    `bin/label_satellite_data G16 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 labeled_data`
+    `bin/label_satellite_data G16 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 5 labeled_data`
 
     SATELLITE must be in the set (G16, G17). e.g. G16\n
     REGION be in the set (M1, M2, F, C). e.g. M1\n
     START must be in the following format: YYYY-MM-DDTHH:MM:SS. e.g. 2019-01-01T10:55:30\n
     END must be in the following format: YYYY-MM-DDTHH:MM:SS. e.g. 2019-01-01T10:55:30\n
+    MAX_SCANS_PER_HOUR an integer limiting the number of scans to get per hour. e.g. 5\n
     PERSIST_DIRECTORY is a path to a local directory at which to persist scans. Directory
     must already exist. e.g. ./downloaded_data\n
     """
@@ -44,7 +46,11 @@ def label(satellite, region, start, end, persist_directory):
         end,
     )
     goes_sequence = goes.get_goes_sequence(
-        satellite=satellite, region=region, start_time_utc=start, end_time_utc=end
+        satellite=satellite,
+        region=region,
+        start_time_utc=start,
+        end_time_utc=end,
+        max_scans_per_hour=max_scans_per_hour,
     )
     pool = multiprocessing.Pool()  # default to the number of cores available
     wildfires = pool.map(evaluate_threshold_model, goes_sequence)
