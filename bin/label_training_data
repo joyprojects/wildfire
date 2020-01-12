@@ -6,7 +6,8 @@ import multiprocessing
 
 import click
 
-from wildfire import goes, threshold_model
+from wildfire import goes
+from wildfire.threshold_model import model
 
 DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S"]
 
@@ -21,7 +22,7 @@ _logger = logging.getLogger(__name__)
 @click.argument("end", type=click.DateTime(formats=DATETIME_FORMATS))
 @click.argument("max_scans_per_hour", type=int)
 @click.argument("persist_directory", type=click.Path(exists=True, file_okay=False))
-def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
+def label_wildfires(satellite, region, start, end, max_scans_per_hour, persist_directory):
     """Label GOES satellite data matching parameters with wildfires.
 
     `bin/label_satellite_data G16 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 5 labeled_data`
@@ -54,7 +55,7 @@ def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
     )
     pool = multiprocessing.Pool()  # default to the number of cores available
     _logger.info("Finding wildfires in sequence...")
-    wildfires = pool.map(evaluate_threshold_model, goes_sequence)
+    wildfires = pool.map(has_wildfire, goes_sequence.scans.values())
     wildfires_serialized = dict(enumerate(wildfires))
 
     _logger.info("Writing wildfires to disk...")
@@ -69,8 +70,8 @@ def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
     _logger.info("Success. Found %s scans with wildfires.", len(wildfires_serialized))
 
 
-def evaluate_threshold_model(goes_scan):
-    """Evaluate whether a wildfire appears on the `goes_scan`.
+def has_wildfire(goes_scan):
+    """Use the threshold model to determine if there is a wildfire in the scan.
 
     Parameters
     ----------
@@ -81,8 +82,8 @@ def evaluate_threshold_model(goes_scan):
     dict
     """
     _logger.info("Finding wildfire in scan...")
-    model_features = threshold_model.model.get_features(goes_scan=goes_scan)
-    model_predictions = threshold_model.model.predict(
+    model_features = model.get_features(goes_scan=goes_scan)
+    model_predictions = model.predict(
         is_hot=model_features.is_hot,
         is_cloud=model_features.is_cloud,
         is_night=model_features.is_night,
@@ -99,4 +100,4 @@ def evaluate_threshold_model(goes_scan):
 
 
 if __name__ == "__main__":
-    label()
+    label_wildfires()
