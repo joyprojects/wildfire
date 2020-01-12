@@ -118,11 +118,13 @@ def find_scans_closest_to_times(s3_scans, desired_times):
         np.array(s3_scans)[np.where(scan_times == closest_time)].tolist()
         for closest_time in closest_times
     ]
+
     if len(desired_times) == 1:
         closest_scans = closest_scans[0]
+
     return np.vectorize(lambda s3_scan: f"s3://{s3_scan.bucket_name}/{s3_scan.key}")(
         closest_scans
-    )
+    ).tolist()
 
 
 def build_local_path(local_directory, filepath, satellite):

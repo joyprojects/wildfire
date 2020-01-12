@@ -1,6 +1,8 @@
 """Wrapper around a time series of GOES satellite scans."""
 import logging
 
+import numpy as np
+
 from .scan import GoesScan, read_netcdfs
 from . import downloader, utilities
 
@@ -70,13 +72,12 @@ def get_goes_sequence(
 
 def _get_scan_filepaths_in_sequence(s3_objects, scan_times_utc):
     """Get the closest set of scans for each scan time in `scan_times_utc`."""
-    return {  # set to remove duplicates
-        tuple(
-            utilities.find_scans_closest_to_times(
-                s3_scans=s3_objects, desired_times=scan_times_utc
-            )
-        )
-    }
+    return np.unique(
+        utilities.find_scans_closest_to_times(
+            s3_scans=s3_objects, desired_times=scan_times_utc
+        ),
+        axis=0,
+    ).tolist()
 
 
 class GoesSequence:
