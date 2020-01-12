@@ -50,12 +50,15 @@ def get_goes_sequence(
         start=start_time_utc,
         end=end_time_utc,
     )
+    _logger.info("Got %d scans from S3.", len(s3_objects))
+
     if len(s3_objects) == 0:
         raise ValueError(f"Could not find well-formed scans matching parameters")
 
     sequence_filepaths_s3 = _get_scan_filepaths_in_sequence(
         s3_objects=s3_objects, scan_times_utc=scan_times
     )
+    
     _logger.info("Building Sequence from %d S3 files...", len(s3_objects))
     scans = utilities.pool_function(
         function=read_netcdfs,

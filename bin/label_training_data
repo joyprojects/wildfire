@@ -19,7 +19,7 @@ _logger = logging.getLogger(__name__)
 @click.argument("region", type=click.Choice(["M1", "M2", "C", "F"]))
 @click.argument("start", type=click.DateTime(formats=DATETIME_FORMATS))
 @click.argument("end", type=click.DateTime(formats=DATETIME_FORMATS))
-@click.argument("end", type=int)
+@click.argument("max_scans_per_hour", type=int)
 @click.argument("persist_directory", type=click.Path(exists=True, file_okay=False))
 def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
     """Label GOES satellite data matching parameters with wildfires.
@@ -46,7 +46,7 @@ def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
         end,
     )
     goes_sequence = goes.get_goes_sequence(
-        satellite=satellite,
+        satellite=goes.utilities.SATELLITE_CONVERSION[satellite],
         region=region,
         start_time_utc=start,
         end_time_utc=end,
