@@ -53,9 +53,8 @@ def label_wildfires(satellite, region, start, end, max_scans_per_hour, persist_d
         end_time_utc=end,
         max_scans_per_hour=max_scans_per_hour,
     )
-    pool = multiprocessing.Pool()  # default to the number of cores available
     _logger.info("Finding wildfires in sequence...")
-    wildfires = pool.map(has_wildfire, goes_sequence.scans.values())
+    wildfires = goes.utilities.pool_function(has_wildfire, goes_sequence.scans.values())
     wildfires_serialized = dict(enumerate(wildfires))
 
     _logger.info("Writing wildfires to disk...")
