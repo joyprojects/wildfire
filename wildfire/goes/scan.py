@@ -46,8 +46,8 @@ def get_goes_scan(satellite, region, scan_time_utc):
         start=scan_time_utc - datetime.timedelta(minutes=region_time_resolution),
         end=scan_time_utc + datetime.timedelta(minutes=region_time_resolution),
     )
-    closest_scan_objects = utilities.find_scans_closest_to_time(
-        s3_scans=s3_objects, desired_time=scan_time_utc
+    closest_scan_objects = utilities.find_scans_closest_to_times(
+        s3_scans=s3_objects, desired_time=[scan_time_utc]
     )
     if len(closest_scan_objects) != 16:
         raise ValueError(

@@ -94,7 +94,7 @@ def normalize(data):
     return (data - data.mean()) / data.std()
 
 
-def find_scans_closest_to_time(s3_scans, desired_time):
+def find_scans_closest_to_times(s3_scans, desired_times):
     """Find all scans in set with the closest scan start time to the desired time.
 
     If multiple bands were requested when producing `s3_scans` then that the number
@@ -103,16 +103,21 @@ def find_scans_closest_to_time(s3_scans, desired_time):
     Parameters
     ----------
     s3_scans : list of boto3.resources.factory.s3.ObjectSummary
-    desired_time : datetime.datetime
+    desired_times : list of datetime.datetime
 
     Returns
     -------
-    list of boto3.resources.factory.s3.ObjectSummary
-        Length should match the number of bands requested when producting `s3_scans`.
+    list of str
+        Where each element is the S3 file path.
     """
     scan_times = np.array([parse_filename(s3_scan.key)[3] for s3_scan in s3_scans])
-    closest_time = scan_times[np.argmin(abs(scan_times - desired_time))]
-    return np.array(s3_scans)[np.where(scan_times == closest_time)].tolist()
+    closest_times = scan_times[
+        np.argmin(np.abs([scan_times - scan_time for scan_time in desired_times]), axis=1)
+    ]
+    return [
+        np.array(s3_scans)[np.where(scan_times == closest_time)].tolist()
+        for closest_time in closest_times
+    ]
 
 
 def build_local_path(local_directory, filepath, satellite):

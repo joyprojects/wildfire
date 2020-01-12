@@ -42,8 +42,8 @@ def get_goes_band(satellite, region, band, scan_time_utc):
     if len(s3_objects) == 0:
         raise ValueError(f"Could not find well-formed scan near {scan_time_utc}")
 
-    closest_s3_object = utilities.find_scans_closest_to_time(
-        s3_scans=s3_objects, desired_time=scan_time_utc
+    closest_s3_object = utilities.find_scans_closest_to_times(
+        s3_scans=s3_objects, desired_times=[scan_time_utc]
     )[0]
     return read_netcdf(
         filepath=f"s3://{closest_s3_object.bucket_name}/{closest_s3_object.key}"
