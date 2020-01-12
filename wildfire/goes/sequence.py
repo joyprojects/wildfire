@@ -61,7 +61,11 @@ def get_goes_sequence(
         s3_objects=s3_objects, scan_times_utc=scan_times
     )
 
-    _logger.info("Building Sequence from %d S3 files...", len(s3_objects))
+    _logger.info(
+        "Building sequence of %d scans over %d files...",
+        len(sequence_filepaths_s3),
+        len(sequence_filepaths_s3.size()),
+    )
     scans = utilities.pool_function(
         function=read_netcdfs,
         function_args=list(sequence_filepaths_s3),
