@@ -24,7 +24,7 @@ _logger = logging.getLogger(__name__)
 def label(satellite, region, start, end, max_scans_per_hour, persist_directory):
     """Label GOES satellite data matching parameters with wildfires.
 
-    `bin/label_satellite_data G16 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 labeled_data`
+    `bin/label_satellite_data G16 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 5 labeled_data`
 
     SATELLITE must be in the set (G16, G17). e.g. G16\n
     REGION be in the set (M1, M2, F, C). e.g. M1\n
