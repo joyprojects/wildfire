@@ -72,8 +72,7 @@ def _get_scan_filepaths_in_sequence(s3_objects, scan_times_utc):
     """Get the closest set of scans for each scan time in `scan_times_utc`."""
     return {  # set to remove duplicates
         tuple(
-            f"s3://{s3_object.bucket_name}/{s3_object.key}"
-            for s3_object in utilities.find_scans_closest_to_times(
+            utilities.find_scans_closest_to_times(
                 s3_scans=s3_objects, desired_times=scan_times_utc
             )
         )

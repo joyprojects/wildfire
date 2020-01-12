@@ -45,9 +45,7 @@ def get_goes_band(satellite, region, band, scan_time_utc):
     closest_s3_object = utilities.find_scans_closest_to_times(
         s3_scans=s3_objects, desired_times=[scan_time_utc]
     )[0]
-    return read_netcdf(
-        filepath=f"s3://{closest_s3_object.bucket_name}/{closest_s3_object.key}"
-    )
+    return read_netcdf(filepath=closest_s3_object)
 
 
 def read_netcdf(filepath):

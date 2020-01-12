@@ -54,11 +54,7 @@ def get_goes_scan(satellite, region, scan_time_utc):
             f"Could not find well-formed scan set in s3 near {scan_time_utc}"
         )
 
-    return read_netcdfs(
-        filepaths=[
-            f"s3://{s3_obj.bucket_name}/{s3_obj.key}" for s3_obj in closest_scan_objects
-        ]
-    )
+    return read_netcdfs(filepaths=closest_scan_objects)
 
 
 def read_netcdfs(filepaths):
