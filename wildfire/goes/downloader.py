@@ -91,8 +91,7 @@ def read_s3(s3_bucket, s3_key):
     s3 = boto3.client("s3")
     with tempfile.NamedTemporaryFile() as temp_file:
         s3.download_file(Bucket=s3_bucket, Key=s3_key, Filename=temp_file.name)
-        dataset = xr.open_dataset(temp_file.name)
-    return dataset
+        return xr.open_dataset(temp_file.name).load()
 
 
 def download_batch(s3_object_summaries, local_directory):

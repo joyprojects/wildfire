@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import datetime
 import json
 import logging
 import os
@@ -10,6 +11,7 @@ from wildfire import goes
 from wildfire.threshold_model import model
 
 DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S"]
+PERSIST_FILENAME = "wildfires_{satellite}_{region}_s{start}_e{end}_c{created}.json"
 
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
@@ -55,16 +57,24 @@ def label_wildfires(satellite, region, start, end, max_scans_per_hour, persist_d
     )
     _logger.info("Finding wildfires in sequence...")
     wildfires = goes.utilities.pool_function(has_wildfire, goes_sequence.scans.values())
-    wildfires_serialized = dict(enumerate(wildfires))
+    wildfires_serialized = dict(enumerate(filter(None, wildfires)))
 
-    _logger.info("Writing wildfires to disk...")
-    with open(
-        os.path.join(
-            persist_directory, f"{satellite}_{region}_{start}_{end}_wildfires.json"
-        ),
-        "w+",
-    ) as buffer:
-        json.dump(wildfires_serialized, buffer)
+    if wildfires_serialized:
+        _logger.info("Writing wildfires to disk...")
+        with open(
+            os.path.join(
+                persist_directory,
+                PERSIST_FILENAME.format(
+                    satellite=satellite,
+                    region=region,
+                    start=start.strftime(DATETIME_FORMATS[0]),
+                    end=end.strftime(DATETIME_FORMATS[0]),
+                    created=datetime.datetime.utcnow().strftime(DATETIME_FORMATS[0])
+                )
+            ),
+            "w+",
+        ) as buffer:
+            json.dump(wildfires_serialized, buffer)
 
     _logger.info("Success. Found %s scans with wildfires.", len(wildfires_serialized))
 
@@ -93,7 +103,7 @@ def has_wildfire(goes_scan):
         return {
             "region": goes_scan.region,
             "satellite": goes_scan.satellite,
-            "scan_time_utc": goes_scan.scan_time_utc,
+            "scan_time_utc": goes_scan.scan_time_utc.strftime(DATETIME_FORMATS[0]),
         }
     return None
 
