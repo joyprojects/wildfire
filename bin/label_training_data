@@ -103,6 +103,7 @@ def _read_scan(s3_filepath, local_directory, s3):
         s3_filepath=s3_filepath, local_directory=local_directory
     )
     if not os.path.exists(local_filepath):
+        raise ValueError(f"{local_path} not found, and we don't want to download.")
         _logger.info("Downloading %s...", s3_filepath)
         local_filepath = downloader.download_file(
             s3_filepath=s3_filepath, local_directory=local_directory, s3=s3
