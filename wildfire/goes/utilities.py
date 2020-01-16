@@ -1,4 +1,5 @@
 import datetime
+import glob
 import logging
 import multiprocessing
 import re
@@ -7,10 +8,31 @@ import numpy as np
 import s3fs
 import tqdm
 
+from wildfire.goes import downloader
+
 LOCAL_FILEPATH_FORMAT = "{local_directory}/{s3_key}"
 
 
 _logger = logging.getLogger(__name__)
+
+
+def filter_filepaths(filepaths, start_time, end_time):
+    return [
+        filepath
+        for filepath in filepaths
+        if start_time <= parse_filename(filename=filepath)[3] <= end_time
+    ]
+
+
+def list_local_files(local_directory, satellite, region, start_time, end_time=None):
+    glob_patterns = downloader._decide_fastest_glob_patterns(
+        satellite=satellite, region=region, start_time=start_time, end_time=end_time
+    )
+    glob_patterns = [
+        "/".join([local_directory] + pattern.split("/")[1:]) for pattern in glob_patterns
+    ]
+    _logger.info("Listing local files using glob patterns: %s", glob_patterns)
+    return map_function(glob.glob, glob_patterns, flatten=True)
 
 
 def normalize(data):

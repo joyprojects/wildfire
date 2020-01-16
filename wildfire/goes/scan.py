@@ -1,8 +1,15 @@
+import math
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 from wildfire.goes import band, utilities
 
 
 def read_netcdfs(filepaths, transform_func=None):
-    return [band.read_netcdf(filepath, transform_func) for filepath in filepaths]
+    return GoesScan(
+        bands=[band.read_netcdf(filepath, transform_func) for filepath in filepaths]
+    )
 
 
 class GoesScan:
