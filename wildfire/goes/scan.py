@@ -1,87 +1,8 @@
-"""Wrapper around the 16 bands of a GOES satellite scan."""
-import datetime
-import logging
-import math
-import urllib
-
-import matplotlib.pyplot as plt
-import numpy as np
-import xarray as xr
-
-from . import downloader, utilities
-from .band import GoesBand
-
-_logger = logging.getLogger(__name__)
+from wildfire.goes import band, utilities
 
 
-def get_goes_scan(satellite, region, scan_time_utc):
-    """Get the GoesScan matching parameters.
-
-    Retrieves the closest scan to `scan_time_utc` matching the `satellite` and `region`
-    from Amazon S3.
-
-    For performance improvement, we use the fact that we know how often the satellite
-    produces a scan to limit the window of our search. For example, there is a CONUS
-    satellite scan every 5 minutes, so we search a 10 minute window centered on
-    `scan_time_utc`.
-
-    Parameters
-    ----------
-    satellite : str
-        Must be in the set (G16, G17).
-    region : str
-        Must be in the set (C, F, M1, M2).
-    scan_time_utc : datetime.datetime
-        Datetime of the scan. Must be specified to the minute.
-
-    Returns
-    -------
-    GoesScan
-    """
-    region_time_resolution = utilities.REGION_TIME_RESOLUTION_MINUTES[region]
-    s3_objects = downloader.query_s3(
-        satellite=satellite,
-        regions=[region],
-        channels=list(range(1, 17)),
-        start=scan_time_utc - datetime.timedelta(minutes=region_time_resolution),
-        end=scan_time_utc + datetime.timedelta(minutes=region_time_resolution),
-    )
-    closest_scan_objects = utilities.find_scans_closest_to_times(
-        s3_scans=s3_objects, desired_times=[scan_time_utc]
-    )
-    if len(closest_scan_objects) != 16:
-        raise ValueError(
-            f"Could not find well-formed scan set in s3 near {scan_time_utc}"
-        )
-
-    return read_netcdfs(filepaths=closest_scan_objects)
-
-
-def read_netcdfs(filepaths):
-    """Read a GoesScan from a list of filepaths.
-
-    Parameters
-    ----------
-    filepaths : list of str
-        List of local filepaths from which to read a GoesScan. There must be 16 filepaths
-        each pointing to a different band's data from the same scan.
-
-    Returns
-    -------
-    GoesScan
-    """
-    _logger.info("Building scan from %d files...", len(filepaths))
-    datasets = []
-    for filepath in filepaths:
-        if filepath.startswith("s3://"):  # s3
-            s3_url = urllib.parse.urlparse(filepath)
-            dataset = downloader.read_s3(
-                s3_bucket=s3_url.netloc, s3_key=s3_url.path.lstrip("/")
-            )
-        else:  # local
-            dataset = xr.open_dataset(filepath)
-        datasets.append(dataset)
-    return GoesScan(bands=datasets)
+def read_netcdfs(filepaths, transform_func=None):
+    return [band.read_netcdf(filepath, transform_func) for filepath in filepaths]
 
 
 class GoesScan:
@@ -154,7 +75,9 @@ class GoesScan:
             Sorted dictionary of GOES satellite data, ordered by band number from
             smallest to greatest.
         """
-        parsed = {dataset.band_id.data[0]: GoesBand(dataset=dataset) for dataset in bands}
+        parsed = {
+            dataset.band_id.data[0]: band.GoesBand(dataset=dataset) for dataset in bands
+        }
         _assert_no_missing_bands(bands=parsed)
         _assert_16_bands(bands=bands)
         _assert_consistent_attributes(bands=bands)

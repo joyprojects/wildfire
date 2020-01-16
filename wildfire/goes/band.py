@@ -12,62 +12,11 @@ from . import downloader, utilities
 _logger = logging.getLogger(__name__)
 
 
-def get_goes_band(satellite, region, band, scan_time_utc):
-    """Get the GoesBand corresponding the input.
-
-    Parameters
-    ----------
-    satellite : str
-        Must be in the set (noaa-goes16, noaa-goes17).
-    region : str
-        Must be in the set (C, F, M1, M2).
-    band : int
-        Must be between 1 and 16 inclusive.
-    scan_time_utc : datetime.datetime
-        Datetime of the scan. Must be specified to the minute.
-
-    Returns
-    -------
-    GoesBand
-    """
-    region_time_resolution = utilities.REGION_TIME_RESOLUTION_MINUTES[region]
-    s3_objects = downloader.query_s3(
-        satellite=satellite,
-        regions=[region],
-        channels=[band],
-        start=scan_time_utc - datetime.timedelta(minutes=region_time_resolution),
-        end=scan_time_utc + datetime.timedelta(minutes=region_time_resolution),
-    )
-
-    if len(s3_objects) == 0:
-        raise ValueError(f"Could not find well-formed scan near {scan_time_utc}")
-
-    closest_s3_object = utilities.find_scans_closest_to_times(
-        s3_scans=s3_objects, desired_times=[scan_time_utc]
-    )[0]
-    return read_netcdf(filepath=closest_s3_object)
-
-
-def read_netcdf(filepath):
-    """Read a GoesBand from the filepath.
-
-    Parameters
-    ----------
-    filepath : str
-        May be a local filepath, or an Amazon S3 URI.
-
-    Returns
-    -------
-    GoesBand
-    """
-    if filepath.startswith("s3://"):
-        s3_url = urllib.parse.urlparse(filepath)
-        dataset = downloader.read_s3(
-            s3_bucket=s3_url.netloc, s3_key=s3_url.path.lstrip("/")
-        )
-    else:  # local
-        dataset = xr.open_dataset(filepath)
-    return GoesBand(dataset=dataset)
+def read_netcdf(filepath, transform_func=None):
+    dataset = xr.load_dataset(filepath)
+    if transform_func is not None:
+        dataset = transform_func(dataset)
+    return dataset
 
 
 class GoesBand:
@@ -235,7 +184,7 @@ class GoesBand:
             A `GoesBand` object where the spectral radiance (`Rad`) of any pixel with DQF
             greater than 1 is set to `np.nan`.
         """
-        return GoesBand(dataset=self.dataset.where(self.dataset.DQF.isin([0, 1])))
+        return GoesBand(dataset=filter_bad_pixels(dataset=self.dataset))
 
     def to_netcdf(self, directory):
         """Persist to netcdf4.
@@ -271,3 +220,7 @@ class GoesBand:
             encoding={"x": {"dtype": "float32"}, "y": {"dtype": "float32"}},
         )
         return local_filepath
+
+
+def filter_bad_pixels(dataset):
+    return dataset.where(dataset.DQF.isin([0, 1]))

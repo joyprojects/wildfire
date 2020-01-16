@@ -157,10 +157,9 @@ def plot_wildfires(goes_scan):
         is_night=model_features.is_night,
         is_water=model_features.is_water,
     )
-    is_wildfire_predicted = model_predictions.mean() > 0
 
     _, (axis_fire, axis_scan) = plt.subplots(ncols=2, figsize=(20, 8))
-    axis_fire.set_title(f"Wildfire Present: {is_wildfire_predicted}", fontsize=20)
+    axis_fire.set_title(f"Wildfire Present: {model_predictions.mean() > 0}", fontsize=20)
 
     image_fire = axis_fire.imshow(model_predictions)
     image_scan = goes_scan["band_7"].plot(axis=axis_scan)
@@ -189,25 +188,43 @@ def get_features(goes_scan):
     """
     rescaled_scan = goes_scan.rescale_to_500m()
 
-    is_hot = is_hot_pixel(
-        brightness_temperature_3_89=rescaled_scan["band_7"].brightness_temperature.data,
-        brightness_temperature_11_19=rescaled_scan["band_14"].brightness_temperature.data,
-    )
-    is_night = is_night_pixel(
-        reflectance_factor_0_64=rescaled_scan["band_2"].reflectance_factor.data,
-        reflectance_factor_0_87=rescaled_scan["band_3"].reflectance_factor.data,
-    )
-    is_water = is_water_pixel(
-        reflectance_factor_2_25=rescaled_scan["band_6"].reflectance_factor.data
-    )
-    is_cloud = is_cloud_pixel(
-        reflectance_factor_0_64=rescaled_scan["band_2"].reflectance_factor.data,
-        reflectance_factor_0_87=rescaled_scan["band_3"].reflectance_factor.data,
-        brightness_temperature_12_27=rescaled_scan["band_15"].brightness_temperature.data,
-    )
+    with np.errstate(invalid="ignore"):
+        is_hot = is_hot_pixel(
+            brightness_temperature_3_89=rescaled_scan[
+                "band_7"
+            ].brightness_temperature.data,
+            brightness_temperature_11_19=rescaled_scan[
+                "band_14"
+            ].brightness_temperature.data,
+        )
+        is_night = is_night_pixel(
+            reflectance_factor_0_64=rescaled_scan["band_2"].reflectance_factor.data,
+            reflectance_factor_0_87=rescaled_scan["band_3"].reflectance_factor.data,
+        )
+        is_water = is_water_pixel(
+            reflectance_factor_2_25=rescaled_scan["band_6"].reflectance_factor.data
+        )
+        is_cloud = is_cloud_pixel(
+            reflectance_factor_0_64=rescaled_scan["band_2"].reflectance_factor.data,
+            reflectance_factor_0_87=rescaled_scan["band_3"].reflectance_factor.data,
+            brightness_temperature_12_27=rescaled_scan[
+                "band_15"
+            ].brightness_temperature.data,
+        )
     return ModelFeatures(
         is_hot=is_hot, is_night=is_night, is_water=is_water, is_cloud=is_cloud,
     )
+
+
+def has_wildfire(goes_scan):
+    model_features = get_features(goes_scan=goes_scan)
+    model_predictions = predict(
+        is_hot=model_features.is_hot,
+        is_cloud=model_features.is_cloud,
+        is_night=model_features.is_night,
+        is_water=model_features.is_water,
+    )
+    return model_predictions.mean() > 0
 
 
 def _assert_shapes_match(*args):
