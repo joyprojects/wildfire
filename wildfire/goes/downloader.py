@@ -21,55 +21,75 @@ _logger = logging.getLogger(__name__)
 
 
 def _decide_fastest_glob_patterns(satellite, region, start_time, end_time):
-    base_pattern = f"{satellite}/ABI-L1b-Rad{region[0]}"
+    base_pattern = "{satellite}/ABI-L1b-Rad{region[0]}/{year}/{day_of_year}/{hour}/OR_ABI-L1b-Rad{region}-M?C??_{satellite_short}_s{start_time}*.nc"
 
-    def build(year, day_of_year, hour, filename):
-        return "/".join([base_pattern, year, day_of_year, hour, filename,])
-
+    satellite_short = SATELLITE_SHORT_HAND[satellite]
     if end_time is None:
         return [
-            build(
+            base_pattern.format(
+                satellite=satellite,
+                satellite_short=satellite_short,
+                region=region,
                 year=start_time.strftime("%Y"),
                 day_of_year=start_time.strftime("%j"),
                 hour=start_time.strftime("%H"),
-                filename=f"OR_ABI-L1b-Rad{region}-M?C??_{SATELLITE_SHORT_HAND[satellite]}_s{start_time:%Y%j%H%M}*.nc",
+                start_time=start_time.strftime("%Y%j%H%M"),
             )
         ]
 
     if start_time.year != end_time.year:
         return [
-            build(year=str(year), day_of_year="*", hour="*", filename="*.nc",)
+            base_pattern.format(
+                satellite=satellite,
+                satellite_short=satellite_short,
+                region=region,
+                year=str(year),
+                day_of_year="*",
+                hour="*",
+                start_time="*",
+            )
             for year in range(start_time.year, end_time.year + 1)
         ]
 
     if start_time.date() != end_time.date():
         return [
-            build(
+            base_pattern.format(
+                satellite=satellite,
+                satellite_short=satellite_short,
+                region=region,
                 year=start_time.strftime("%Y"),
-                day_of_year=str(day).zfill(3),
+                day_of_year=str(day_of_year).zfill(3),
                 hour="*",
-                filename="*.nc",
+                start_time="*",
             )
-            for day in range(start_time.day, end_time.day + 1)
+            for day_of_year in range(
+                int(start_time.strftime("%j")), int(end_time.strftime("%j")) + 1
+            )
         ]
 
     if start_time.hour != end_time.hour:
         return [
-            build(
+            base_pattern.format(
+                satellite=satellite,
+                satellite_short=satellite_short,
+                region=region,
                 year=start_time.strftime("%Y"),
                 day_of_year=start_time.strftime("%j"),
                 hour=str(hour).zfill(2),
-                filename="*.nc",
+                start_time="*",
             )
             for hour in range(start_time.hour, end_time.hour + 1)
         ]
 
     return [
-        build(
+        base_pattern.format(
+            satellite=satellite,
+            satellite_short=satellite_short,
+            region=region,
             year=start_time.strftime("%Y"),
             day_of_year=start_time.strftime("%j"),
             hour=start_time.strftime("%H"),
-            filename="*.nc",
+            start_time="*",
         )
     ]
 
