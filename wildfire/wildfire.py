@@ -22,9 +22,13 @@ def label_local_files(filepaths):
 
 
 def _process_scan(filepaths):
-    goes_scan = scan.read_netcdfs(
-        filepaths=filepaths, transform_func=band.filter_bad_pixels
-    )
+    try:
+        goes_scan = scan.read_netcdfs(
+            filepaths=filepaths, transform_func=band.filter_bad_pixels
+        )
+    except ValueError:
+        return None
+
     if model.has_wildfire(goes_scan=goes_scan):
         return {
             "scan_time_utc": goes_scan.scan_time_utc.strftime("%Y-%m-%dT%H:%M:%S%f"),

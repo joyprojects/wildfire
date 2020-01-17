@@ -107,7 +107,6 @@ def list_local_files(local_directory, satellite, region, start_time, end_time=No
         start_time=start_time,
         end_time=end_time,
     )
-    _logger.info("Listing local files using glob patterns: %s", glob_patterns)
     return imap_function(glob.glob, glob_patterns, flatten=True)
 
 
