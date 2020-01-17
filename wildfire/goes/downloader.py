@@ -14,90 +14,19 @@ import s3fs
 
 from . import utilities
 
-SATELLITE_SHORT_HAND = {"noaa-goes16": "G16", "noaa-goes17": "G17"}
 SATELLITE_UPPERCASE = {"noaa-goes16": "GOES16", "noaa-goes17": "GOES17"}
 
 _logger = logging.getLogger(__name__)
 
 
-def _decide_fastest_glob_patterns(satellite, region, start_time, end_time):
-    base_pattern = "{satellite}/ABI-L1b-Rad{region[0]}/{year}/{day_of_year}/{hour}/OR_ABI-L1b-Rad{region}-M?C??_{satellite_short}_s{start_time}*.nc"
-
-    satellite_short = SATELLITE_SHORT_HAND[satellite]
-    if end_time is None:
-        return [
-            base_pattern.format(
-                satellite=satellite,
-                satellite_short=satellite_short,
-                region=region,
-                year=start_time.strftime("%Y"),
-                day_of_year=start_time.strftime("%j"),
-                hour=start_time.strftime("%H"),
-                start_time=start_time.strftime("%Y%j%H%M"),
-            )
-        ]
-
-    if start_time.year != end_time.year:
-        return [
-            base_pattern.format(
-                satellite=satellite,
-                satellite_short=satellite_short,
-                region=region,
-                year=str(year),
-                day_of_year="*",
-                hour="*",
-                start_time="*",
-            )
-            for year in range(start_time.year, end_time.year + 1)
-        ]
-
-    if start_time.date() != end_time.date():
-        return [
-            base_pattern.format(
-                satellite=satellite,
-                satellite_short=satellite_short,
-                region=region,
-                year=start_time.strftime("%Y"),
-                day_of_year=str(day_of_year).zfill(3),
-                hour="*",
-                start_time="*",
-            )
-            for day_of_year in range(
-                int(start_time.strftime("%j")), int(end_time.strftime("%j")) + 1
-            )
-        ]
-
-    if start_time.hour != end_time.hour:
-        return [
-            base_pattern.format(
-                satellite=satellite,
-                satellite_short=satellite_short,
-                region=region,
-                year=start_time.strftime("%Y"),
-                day_of_year=start_time.strftime("%j"),
-                hour=str(hour).zfill(2),
-                start_time="*",
-            )
-            for hour in range(start_time.hour, end_time.hour + 1)
-        ]
-
-    return [
-        base_pattern.format(
-            satellite=satellite,
-            satellite_short=satellite_short,
-            region=region,
-            year=start_time.strftime("%Y"),
-            day_of_year=start_time.strftime("%j"),
-            hour=start_time.strftime("%H"),
-            start_time="*",
-        )
-    ]
-
-
 def list_files(satellite, region, start_time, end_time=None):
     s3 = s3fs.S3FileSystem(anon=True, use_ssl=False)
-    glob_patterns = _decide_fastest_glob_patterns(
-        satellite=satellite, region=region, start_time=start_time, end_time=end_time
+    glob_patterns = utilities.decide_fastest_glob_patterns(
+        directory=satellite,
+        satellite=satellite,
+        region=region,
+        start_time=start_time,
+        end_time=end_time,
     )
     _logger.info("Listing files in S3 using glob patterns: %s", glob_patterns)
     return utilities.map_function(s3.glob, glob_patterns, flatten=True)
