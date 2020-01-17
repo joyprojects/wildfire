@@ -71,9 +71,9 @@ def label(satellite, region, start, end, goes_directory, wildfires_directory):
             WILDFIRE_FILENAME.format(
                 satellite=satellite,
                 region=region,
-                start=start.strfitme(DATETIME_FORMATS[0]),
-                end=end.strfitme(DATETIME_FORMATS[0]),
-                created=datetime.datetime.utcnow().strfitme(DATETIME_FORMATS[0]),
+                start=start.strftime(DATETIME_FORMATS[0]),
+                end=end.strftime(DATETIME_FORMATS[0]),
+                created=datetime.datetime.utcnow().strftime(DATETIME_FORMATS[0]),
             ),
         )
         _logger.info("Persisting wildfires to %s", wildfires_filepath)
