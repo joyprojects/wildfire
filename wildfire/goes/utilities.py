@@ -24,7 +24,7 @@ def decide_fastest_glob_patterns(directory, satellite, region, start_time, end_t
     if end_time is None:
         return [
             base_pattern.format(
-                satellite=directory,
+                directory=directory,
                 satellite_short=satellite_short,
                 region=region,
                 year=start_time.strftime("%Y"),
@@ -37,7 +37,7 @@ def decide_fastest_glob_patterns(directory, satellite, region, start_time, end_t
     if start_time.year != end_time.year:
         return [
             base_pattern.format(
-                satellite=satellite,
+                directory=directory,
                 satellite_short=satellite_short,
                 region=region,
                 year=str(year),
@@ -51,7 +51,7 @@ def decide_fastest_glob_patterns(directory, satellite, region, start_time, end_t
     if start_time.date() != end_time.date():
         return [
             base_pattern.format(
-                satellite=satellite,
+                directory=directory,
                 satellite_short=satellite_short,
                 region=region,
                 year=start_time.strftime("%Y"),
@@ -67,7 +67,7 @@ def decide_fastest_glob_patterns(directory, satellite, region, start_time, end_t
     if start_time.hour != end_time.hour:
         return [
             base_pattern.format(
-                satellite=satellite,
+                directory=directory,
                 satellite_short=satellite_short,
                 region=region,
                 year=start_time.strftime("%Y"),
@@ -80,7 +80,7 @@ def decide_fastest_glob_patterns(directory, satellite, region, start_time, end_t
 
     return [
         base_pattern.format(
-            satellite=satellite,
+            directory=directory,
             satellite_short=satellite_short,
             region=region,
             year=start_time.strftime("%Y"),
@@ -107,9 +107,6 @@ def list_local_files(local_directory, satellite, region, start_time, end_time=No
         start_time=start_time,
         end_time=end_time,
     )
-    glob_patterns = [
-        "/".join([local_directory] + pattern.split("/")[1:]) for pattern in glob_patterns
-    ]
     _logger.info("Listing local files using glob patterns: %s", glob_patterns)
     return map_function(glob.glob, glob_patterns, flatten=True)
 
