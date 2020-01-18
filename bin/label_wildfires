@@ -6,10 +6,10 @@ import os
 
 import click
 
-from wildfire.wildfire import label_local_files
+from wildfire import wildfire
 from wildfire.goes import utilities
 
-DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S"]
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 WILDFIRE_FILENAME = "wildfires_{satellite}_{region}_s{start}_e{end}_c{created}.json"
 
 logging.basicConfig(level=logging.INFO)
@@ -19,21 +19,22 @@ _logger = logging.getLogger(__name__)
 @click.command()
 @click.argument("satellite", type=click.Choice(["noaa-goes16", "noaa-goes17"]))
 @click.argument("region", type=click.Choice(["M1", "M2", "C", "F"]))
-@click.argument("start", type=click.DateTime(formats=DATETIME_FORMATS))
-@click.argument("end", type=click.DateTime(formats=DATETIME_FORMATS))
+@click.argument("start", type=click.DateTime(formats=[DATETIME_FORMAT]))
+@click.argument("end", type=click.DateTime(formats=[DATETIME_FORMAT]))
 @click.argument("goes_directory", type=click.Path(exists=True, file_okay=False))
 @click.argument("wildfires_directory", type=click.Path(exists=True, file_okay=False))
 def label(satellite, region, start, end, goes_directory, wildfires_directory):
-    """Label local GOES satellite data matching parameters with wildfires.
+    """Label local GOES satellite data with wildfires.
 
-    `bin/label_training_data noaa-goes17 M1 2019-01-01T01:00:00 2019-01-01T01:10:00 goes_data labeled_wildfires`
+    `bin/label_wildfires noaa-goes17 M1 2019-01-01T01:00:00 2019-01-01T01:10:00 goes_data
+    labeled_wildfires`
 
     SATELLITE must be in the set (noaa-goes16, noaa-goes17). e.g. noaa-goes17\n
     REGION be in the set (M1, M2, F, C). e.g. M1\n
     START must be in the following format: YYYY-MM-DDTHH:MM:SS. e.g. 2019-01-01T10:55:30\n
     END must be in the following format: YYYY-MM-DDTHH:MM:SS. e.g. 2019-01-01T10:55:30\n
-    GOES_DIRECTORY is a path to a local directory at which to look for and persist
-    scans. Directory must already exist. e.g. ./downloaded_data\n
+    GOES_DIRECTORY is a path to a local directory at which to look for scans. Directory
+    must already exist. e.g. ./downloaded_data\n
     WILDFIRES_DIRECTORY is a path to a local directory at which to persist wildfires.
     Directory must already exist. e.g. ./downloaded_data\n
     """
@@ -52,7 +53,7 @@ def label(satellite, region, start, end, goes_directory, wildfires_directory):
         goes_directory,
         wildfires_directory,
     )
-    _logger.info("Listing local files...")
+    _logger.info("Listing local filepaths...")
     filepaths = utilities.list_local_files(
         local_directory=goes_directory,
         satellite=satellite,
@@ -60,20 +61,18 @@ def label(satellite, region, start, end, goes_directory, wildfires_directory):
         start_time=start,
         end_time=end,
     )
-    filepaths = utilities.filter_filepaths(
-        filepaths=filepaths, start_time=start, end_time=end
-    )
 
-    wildfires = label_local_files(filepaths=filepaths)
+    _logger.info("Finding windfires...")
+    wildfires = wildfire.find_wildfires_goes(filepaths=filepaths)
     if len(wildfires) > 0:
         wildfires_filepath = os.path.join(
             wildfires_directory,
             WILDFIRE_FILENAME.format(
                 satellite=satellite,
                 region=region,
-                start=start.strftime(DATETIME_FORMATS[0]),
-                end=end.strftime(DATETIME_FORMATS[0]),
-                created=datetime.datetime.utcnow().strftime(DATETIME_FORMATS[0]),
+                start=start.strftime(DATETIME_FORMAT),
+                end=end.strftime(DATETIME_FORMAT),
+                created=datetime.datetime.utcnow().strftime(DATETIME_FORMAT),
             ),
         )
         _logger.info("Persisting wildfires to %s", wildfires_filepath)

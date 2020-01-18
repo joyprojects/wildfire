@@ -1,4 +1,4 @@
-"""Packaging for the GOES library."""
+"""Packaging."""
 from setuptools import find_packages, setup
 
 

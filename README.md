@@ -40,12 +40,12 @@ python environment. Below are several usefule commands for doing so with conda.
 1. `cp .sample_env .env` and fill out any `<>` blocks
 1. `set -o allexport && source .env && set +o allexport` to export environment variables
 1. `pip install -r requirements.txt` to install dependencies
-1. `python setup.py install` to install as a package
+1. `pip install -r requirements-dev.in` to install test dependencies
 1. `scripts/test-it` to verify installation
 
 ### Requirements
 
-1. To interact with S3 via [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
+1. To interact with S3 via [s3fs](https://s3fs.readthedocs.io/en/latest/)
 one either needs to have credentials stored at `~/.aws/credentials` (see [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file)) or the environment variables
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
 

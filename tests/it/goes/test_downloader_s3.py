@@ -2,57 +2,70 @@ import datetime
 import os
 import tempfile
 
-import boto3
-import xarray as xr
+import s3fs
 
-from wildfire.goes import downloader
+from wildfire.goes import downloader, utilities
 
 
-def test_persist_s3(s3_bucket_key):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        actual = downloader.persist_s3(
-            s3_bucket=s3_bucket_key["bucket"],
-            s3_key=s3_bucket_key["key"],
-            local_directory=temp_dir,
+def test_list_s3_files():
+    region = "M1"
+    satellite = "noaa-goes17"
+    start_time = datetime.datetime(2019, 1, 1, 1)
+    end_time = datetime.datetime(2019, 1, 1, 2)
+
+    actual = downloader.list_s3_files(
+        satellite=satellite, region=region, start_time=start_time, end_time=end_time
+    )
+    assert len(actual) == 960
+
+    (actual_region, _, actual_satellite, actual_started_at,) = utilities.parse_filename(
+        filename=actual[0]
+    )
+    assert actual_region == region
+    assert actual_satellite == utilities.SATELLITE_SHORT_HAND[satellite]
+    assert actual_started_at >= start_time
+    assert actual_started_at <= end_time
+
+
+def test_list_s3_files_single_scan():
+    region = "M1"
+    satellite = "noaa-goes17"
+    start_time = datetime.datetime(2019, 1, 1, 1)
+
+    actual = downloader.list_s3_files(  # no end_time
+        satellite=satellite, region=region, start_time=start_time
+    )
+    assert len(actual) == 16
+
+    (actual_region, _, actual_satellite, actual_scan_time) = utilities.parse_filename(
+        filename=actual[0]
+    )
+    for filepath in actual:
+        (parsed_region, _, parsed_satellite, parsed_scan_time) = utilities.parse_filename(
+            filename=filepath
+        )
+        assert actual_region == parsed_region
+        assert actual_satellite == parsed_satellite
+        assert actual_scan_time == parsed_scan_time
+
+
+def test_download_file(s3_filepath):
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        actual = downloader.download_file(
+            s3_filepath=s3_filepath, local_directory=temporary_directory,
         )
         assert os.path.exists(actual)
 
-        actual = xr.open_dataset(filename_or_obj=actual)
-        assert actual.dataset_name == os.path.basename(s3_bucket_key["key"])
 
-
-def test_read_s3(s3_bucket_key):
-    actual = downloader.read_s3(
-        s3_bucket=s3_bucket_key["bucket"], s3_key=s3_bucket_key["key"]
-    )
-    assert isinstance(actual, xr.core.dataset.Dataset)
-
-
-def test_query_s3():
-    actual = downloader.query_s3(
-        satellite="noaa-goes17",
-        regions=["M2"],
-        channels=[1],
-        start=datetime.datetime(2019, 1, 1, 1),
-        end=datetime.datetime(2019, 1, 1, 2),
-    )
-    assert len(actual) == 60
-
-
-def test_download_batch(s3_bucket_key):
-    s3 = boto3.resource("s3")
-    test_object = s3.ObjectSummary(
-        bucket_name=s3_bucket_key["bucket"], key=s3_bucket_key["key"]
-    )
-    with tempfile.TemporaryDirectory() as temp_dir:
-        actual = downloader.download_batch(
-            s3_object_summaries=[test_object], local_directory=temp_dir,
+def test_download_files():
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        actual = downloader.download_files(
+            local_directory=temporary_directory,
+            satellite="noaa-goes17",
+            region="M1",
+            start_time=datetime.datetime(2019, 1, 1, 1, 0),
+            end_time=datetime.datetime(2019, 1, 1, 1, 1),
         )
-        assert len(actual) == 1
-
-        local_filepath = actual[0]
-        actual = local_filepath
-        assert os.path.exists(actual)
-
-        actual = xr.open_dataset(filename_or_obj=actual)
-        assert actual.dataset_name == os.path.basename(local_filepath)
+        assert len(actual) == 16
+        for actual_local_filepath in actual:
+            assert os.path.exists(actual_local_filepath)

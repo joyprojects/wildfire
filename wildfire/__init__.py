@@ -1,1 +1,1 @@
-"""Modeling characteristics about wildfires using geostationary satellite imagery."""
+"""Modeling wildfires using geostationary satellite imagery."""

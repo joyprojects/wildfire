@@ -1,22 +1,35 @@
 """Wrapper around the a single band's data from a GOES satellite scan."""
-import datetime
 import logging
 import os
-import urllib
 
 import numpy as np
 import xarray as xr
 
-from . import downloader, utilities
+from . import utilities
 
 _logger = logging.getLogger(__name__)
 
 
 def read_netcdf(filepath, transform_func=None):
+    """Read netcdf4 file defined at `filepath`.
+
+    If `transform_func` is provided, then transform dataset defined by `filepath` before
+    returning.
+
+    Parameters
+    ----------
+    filepath : str
+    transform_func : function
+        (xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
+
+    Returns
+    -------
+    GoesBand
+    """
     dataset = xr.load_dataset(filepath)
     if transform_func is not None:
         dataset = transform_func(dataset)
-    return dataset
+    return GoesBand(dataset=dataset)
 
 
 class GoesBand:
@@ -24,7 +37,7 @@ class GoesBand:
 
     Attributes
     ----------
-    dataset : xr.core.dataset.DataSet
+    dataset : xr.core.dataset.Dataset
     band : int
         Between 1 and 16 inclusive. The band of light over which the scan was made.
     band_wavelength_micrometers : float
@@ -42,12 +55,12 @@ class GoesBand:
 
         Parameters
         ----------
-        dataset : xr.core.dataset.DataSet
+        dataset : xr.core.dataset.Dataset
         """
         self.dataset = dataset
         (
             self.region,
-            self.band,
+            self.band_id,
             self.satellite,
             self.scan_time_utc,
         ) = utilities.parse_filename(filename=dataset.dataset_name)
@@ -56,8 +69,8 @@ class GoesBand:
     def plot(self, axis=None, use_radiance=False, **xr_imshow_kwargs):
         """Plot the band.
 
-        If not plotting the radiance, will plot the reflectance factor for bands 1 - 6,
-        and the brightness temperature for bands 7 - 16.
+        If not plotting spectral radiance, will plot the reflectance factor for bands 1 -
+        6, and the brightness temperature for bands 7 - 16.
 
         Parameters
         ----------
@@ -84,7 +97,7 @@ class GoesBand:
 
         axis_image = data.plot.imshow(ax=axis, **xr_imshow_kwargs)
         axis_image.axes.set_title(
-            f"Band {self.band} ({self.band_wavelength_micrometers:.2f} micrometers)"
+            f"Band {self.band_id} ({self.band_wavelength_micrometers:.2f} micrometers)"
             f"\n{self.scan_time_utc:%Y-%m-%d %H:%M} UTC",
             fontsize=20,
         )
@@ -111,10 +124,38 @@ class GoesBand:
         xr.core.dataarray.DataArray
         """
         if use_radiance:
-            return utilities.normalize(self.dataset.Rad)
+            return normalize(self.dataset.Rad)
 
         parsed_data = self.parse()
-        return utilities.normalize(parsed_data)
+        return normalize(parsed_data)
+
+    def rescale_to_500m(self):
+        """Scale band to 500 meters x 500 meters.
+
+        The spatial resolution is band-dependent:
+            500 m: bands 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+            1 km: bands 1, 3, 5
+            2 km: band 2
+
+        Notes
+        -----
+        We are currently ignoring the fact that after rescaling the X and Y coordinates
+        across the different bands don't correspond. We rely on the fact that they are
+        close enough to each other, however, this could open up problems in the future.
+
+        Returns
+        -------
+        GoesBand
+            A `GoesBand` object where each band has been rescaled to 500 meters.
+        """
+        if self.band_id in (1, 3, 5):
+            rescaled_data = self.dataset.thin(2)  # 1km -> 500m
+        elif self.band_id == 2:
+            rescaled_data = self.dataset.thin(4)  # 2km -> 500m
+        else:
+            rescaled_data = self.dataset  # 500m -> 500m
+
+        return GoesBand(dataset=rescaled_data)
 
     def parse(self):
         """Parse spectral radiance into appropriate units.
@@ -126,7 +167,7 @@ class GoesBand:
         -------
         xr.core.dataarray.DataArray
         """
-        if self.band < 7:  # reflective band
+        if self.band_id < 7:  # reflective band
             return self.reflectance_factor
         # emissive band
         return self.brightness_temperature
@@ -166,10 +207,6 @@ class GoesBand:
         dataarray.attrs["long_name"] = "ABI L1b Brightness Temperature"
         dataarray.attrs["units"] = "Kelvin"
         return dataarray
-
-    def to_lat_lon(self):
-        """Convert the X and Y of the ABI fixed grid to latitude and longitude."""
-        raise NotImplementedError
 
     def filter_bad_pixels(self):
         """Use the Data Quality Flag (DQF) to filter out bad pixels.
@@ -223,4 +260,30 @@ class GoesBand:
 
 
 def filter_bad_pixels(dataset):
+    """Use the Data Quality Flag (DQF) to filter out bad pixels.
+
+    Each pixel (value according to a specific X-Y coordinate) has a DQF, which ranges
+    from 0 (good) to 3 (no value). We follow NOAA's suggestion of filtering out all
+    pixes with a flag of 2 or 3.
+
+    Returns
+    -------
+    xr.core.dataset.Dataset
+        An xarray dataset where the spectral radiance (`Rad`) of any pixel with DQF
+        greater than 1 is set to `np.nan`.
+    """
     return dataset.where(dataset.DQF.isin([0, 1]))
+
+
+def normalize(data):
+    """Normalize data to be centered around 0.
+
+    Parameters
+    ----------
+    data : np.ndarray | xr.core.dataarray.DataArray
+
+    Returns
+    -------
+    np.ndarray | xr.core.dataarray.DataArray
+    """
+    return (data - data.mean()) / data.std()
