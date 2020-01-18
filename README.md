@@ -10,6 +10,7 @@ geostationary satellite imagery.
 - [Installation](#Installation)
   - [Instructions](#Instructions)
   - [Requirements](#Requirements)
+- [bin/](#bin/)
 - [documentation/](#documentation/)
 - [wildfire/goes/](#wildfire/goes/)
 - [wildfire/threshold_model/](#wildfire/threshold_model/)
@@ -43,6 +44,20 @@ an isolated python environment. Below are several usefule commands for doing so 
 one either needs to have credentials stored at `~/.aws/credentials` (see
 [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file))
 or the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
+
+## bin/
+
+There are currently two main entry scripts for this package, `bin/download_satellite_data`
+`bin/label_wildfires` which are meant to bulk download GOES satellite data, and label GOES
+satellite data with wildfires.
+
+`bin/download_satellite_data noaa-goes17 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 downloaded_data`
+
+- To download GOES data from the GOES-17 satellite over the mesoscale 1 region between Jan 1, 2019 01:00 AM and Feb 1, 2019 01:11 AM to the "downloaded_data/" directory
+
+`bin/label_wildfires noaa-goes17 M1 2019-01-01T01:00:00 2019-02-01T01:00:00 goes_data labeled_wildfires`
+
+- To label wildfires in GOES data from the GOES-17 satellite over the mesoscale 1 region between Jan 1, 2019 01:00 AM and Feb 1, 2019 01:00 AM found in the "goes_data/" directory and persist any wildfires found to the "labeled_wildfires" directory
 
 ## documentation/
 
