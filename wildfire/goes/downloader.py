@@ -26,7 +26,7 @@ DownloadFileArgs = namedtuple(
 _logger = logging.getLogger(__name__)
 
 
-def list_s3_files(satellite, region, start_time, end_time=None):
+def list_s3_files(satellite, region, start_time, end_time=None, channel=None):
     """List NOAA GOES-R series files in Amazon S3 matching parameters.
 
     Parameters
@@ -35,6 +35,9 @@ def list_s3_files(satellite, region, start_time, end_time=None):
         Must be in set (noaa-goes16, noaa-goes17).
     region : str
         Must be in set (M1, M2, C, F).
+    channel : int, optional
+        Must be between 1 and 16 inclusive. By default `None` which will list all
+        channels.
     start_time : datetime.datetime
     end_time : datetime.datetime, optional
         By default `None`, which will list all files whose scan start time matches
@@ -51,6 +54,7 @@ def list_s3_files(satellite, region, start_time, end_time=None):
         region=region,
         start_time=start_time,
         end_time=end_time,
+        channel=channel,
         s3=True,
     )
     _logger.info("Listing files in S3 using glob patterns: %s", glob_patterns)

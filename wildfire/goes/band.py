@@ -1,24 +1,72 @@
 """Wrapper around the a single band's data from a GOES satellite scan."""
-import logging
 import os
 
 import numpy as np
 import xarray as xr
 
-from . import utilities
-
-_logger = logging.getLogger(__name__)
+from . import downloader, utilities
 
 
-def read_netcdf(filepath, transform_func=None):
-    """Read netcdf4 file defined at `filepath`.
+def get_goes_band(satellite, region, channel, scan_time_utc, local_directory, s3=True):
+    """Read the GoesBand defined by parameters from the local filesystem or s3.
+
+    Gives preference to data already on the local filesystem with downloading from
+    Amazon S3 used as a backup, if `s3` is `True`.
+
+    Parameters
+    ----------
+    satellite : str
+        Must be in set (noaa-goes16, noaa-goes17).
+    region : str
+        Must be in set (M1, M2, C, F).
+    channel : int
+        Must be between 1 and 16 inclusive.
+    scan_time_utc : datetime.datetime
+    local_directory : str
+    s3 : bool
+        Whether s3 access is allowed.
+
+    Returns
+    -------
+    GoesBand
+    """
+    local_filepaths = utilities.list_local_files(
+        local_directory=local_directory,
+        satellite=satellite,
+        region=region,
+        start_time=scan_time_utc,
+        channel=channel,
+    )
+
+    if len(local_filepaths) == 1:
+        return read_netcdf(local_filepath=local_filepaths[0])
+
+    if s3:
+        s3_filepaths = downloader.list_s3_files(
+            satellite=satellite, region=region, channel=channel, start_time=scan_time_utc,
+        )
+        if len(s3_filepaths) == 1:
+            downloaded_filepath = downloader.download_file(
+                s3_filepath=s3_filepaths[0], local_directory=local_directory,
+            )
+            return read_netcdf(local_filepath=downloaded_filepath)
+
+        raise ValueError(
+            f"Could not find band. local: {len(local_filepaths)} files; "
+            f"downloaded: {len(s3_filepaths)} files"
+        )
+    raise ValueError(f"Could not find band. local: {len(local_filepaths)} files")
+
+
+def read_netcdf(local_filepath, transform_func=None):
+    """Read netcdf4 file defined at `local_filepath`.
 
     If `transform_func` is provided, then transform dataset defined by `filepath` before
     returning.
 
     Parameters
     ----------
-    filepath : str
+    local_filepath : str
     transform_func : function
         (xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
 
@@ -26,7 +74,7 @@ def read_netcdf(filepath, transform_func=None):
     -------
     GoesBand
     """
-    dataset = xr.load_dataset(filepath)
+    dataset = xr.load_dataset(local_filepath)
     if transform_func is not None:
         dataset = transform_func(dataset)
     return GoesBand(dataset=dataset)

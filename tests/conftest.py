@@ -42,7 +42,7 @@ def emissive_band():
 @pytest.fixture()
 def all_bands_wildfire():
     return [
-        goes.read_netcdf(filepath)
+        goes.read_netcdf(local_filepath=filepath)
         for filepath in glob.glob(
             os.path.join(
                 "tests",
@@ -61,7 +61,7 @@ def all_bands_wildfire():
 @pytest.fixture()
 def all_bands_no_wildfire():
     return [
-        goes.read_netcdf(filepath)
+        goes.read_netcdf(local_filepath=filepath)
         for filepath in glob.glob(
             os.path.join(
                 "tests",

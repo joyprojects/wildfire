@@ -68,7 +68,7 @@ def parse_scan_for_wildfire(filepaths):
         complete scan.
     """
     try:
-        goes_scan = scan.read_netcdfs(filepaths=filepaths)
+        goes_scan = scan.read_netcdfs(local_filepaths=filepaths)
     except ValueError as error_message:
         _logger.warning(
             "\nSkipping malformed goes_scan comprised of %s.\nError: %s",

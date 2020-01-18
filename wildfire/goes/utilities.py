@@ -16,7 +16,7 @@ BASE_PATTERN_FORMAT = os.path.join(
     "{year}",
     "{day_of_year}",
     "{hour}",
-    "OR_ABI-L1b-Rad{region}-M?C??_{satellite_short}_s{start_time}*.nc",
+    "OR_ABI-L1b-Rad{region}-M?C{channel}_{satellite_short}_s{start_time}*.nc",
 )
 
 _logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def group_filepaths_into_scans(filepaths):
 
 
 def decide_fastest_glob_patterns(
-    directory, satellite, region, start_time, end_time, s3=False
+    directory, satellite, region, start_time, end_time, channel=None, s3=False
 ):
     """From the provided input, compile the glob patterns for multiprocessing.
 
@@ -57,6 +57,9 @@ def decide_fastest_glob_patterns(
         Must be in set (noaa-goes16, noaa-goes17).
     region : str
         Must be in set (M1, M2, C, F).
+    channel : int, optional
+        Must be between 1 and 16 inclusive. Default to `None` which sets channel to
+        `"??"` to match all channels.
     start_time : datetime.datetime
     end_time : datetime.datetime
     s3 : bool, optional
@@ -67,6 +70,7 @@ def decide_fastest_glob_patterns(
     -------
     list of str
     """
+    channel = str(channel).zfill(2) if channel is not None else "??"
     base_pattern = (
         BASE_PATTERN_FORMAT if not s3 else BASE_PATTERN_FORMAT.replace(os.sep, "/")
     )
@@ -82,6 +86,7 @@ def decide_fastest_glob_patterns(
                 day_of_year=start_time.strftime("%j"),
                 hour=start_time.strftime("%H"),
                 start_time=start_time.strftime("%Y%j%H%M"),
+                channel=channel,
             )
         ]
 
@@ -95,6 +100,7 @@ def decide_fastest_glob_patterns(
                 day_of_year="*",
                 hour="*",
                 start_time="*",
+                channel=channel,
             )
             for year in range(start_time.year, end_time.year + 1)
         ]
@@ -109,6 +115,7 @@ def decide_fastest_glob_patterns(
                 day_of_year=str(day_of_year).zfill(3),
                 hour="*",
                 start_time="*",
+                channel=channel,
             )
             for day_of_year in range(
                 int(start_time.strftime("%j")), int(end_time.strftime("%j")) + 1
@@ -125,6 +132,7 @@ def decide_fastest_glob_patterns(
                 day_of_year=start_time.strftime("%j"),
                 hour=str(hour).zfill(2),
                 start_time="*",
+                channel=channel,
             )
             for hour in range(start_time.hour, end_time.hour + 1)
         ]
@@ -138,6 +146,7 @@ def decide_fastest_glob_patterns(
             day_of_year=start_time.strftime("%j"),
             hour=start_time.strftime("%H"),
             start_time="*",
+            channel=channel,
         )
     ]
 
@@ -162,7 +171,9 @@ def filter_filepaths(filepaths, start_time, end_time):
     ]
 
 
-def list_local_files(local_directory, satellite, region, start_time, end_time=None):
+def list_local_files(
+    local_directory, satellite, region, start_time, end_time=None, channel=None
+):
     """List local files that match parameters.
 
     Parameters
@@ -173,6 +184,9 @@ def list_local_files(local_directory, satellite, region, start_time, end_time=No
         Must be in set (noaa-goes16, noaa-goes17).
     region : str
         Must be in set (M1, M2, C, F).
+    channel : int, optional
+        Must be between 1 and 16 inclusive. By default `None` which will list all
+        channels.
     start_time : datetime.datetime
     end_time : datetime.datetime, optional
         By default `None`, which will list all files whose scan start time matches
@@ -186,6 +200,7 @@ def list_local_files(local_directory, satellite, region, start_time, end_time=No
         directory=local_directory,
         satellite=satellite,
         region=region,
+        channel=channel,
         start_time=start_time,
         end_time=end_time,
     )

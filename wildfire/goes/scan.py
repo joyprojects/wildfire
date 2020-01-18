@@ -1,21 +1,70 @@
 """Wrapper around the 16 bands of a GOES satellite scan."""
+import datetime
 import math
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from wildfire.goes import band, utilities
+from . import band, downloader, utilities
 
 
-def read_netcdfs(filepaths, transform_func=None):
-    """Read scan defined by `filepaths` as GoesScan.
+def get_goes_scan(satellite, region, scan_time_utc, local_directory, s3=True):
+    """Read the GoesScan defined by parameters from the local filesystem or s3.
+
+    Gives preference to scans already on the local filesystem with downloading from
+    Amazon S3 used as a backup.
+
+    Parameters
+    ----------
+    satellite : str
+        Must be in set (noaa-goes16, noaa-goes17).
+    region : str
+        Must be in set (M1, M2, C, F).
+    scan_time_utc : datetime.datetime
+    local_directory : str
+    s3 : bool
+        Whether s3 access is allowed.
+
+    Returns
+    -------
+    GoesScan
+    """
+    local_filepaths = utilities.list_local_files(
+        local_directory=local_directory,
+        satellite=satellite,
+        region=region,
+        start_time=scan_time_utc + datetime.timedelta(),
+    )
+
+    if len(local_filepaths) == 16:
+        return read_netcdfs(local_filepaths=local_filepaths)
+
+    if s3:
+        downloaded_filepaths = downloader.download_files(
+            local_directory=local_directory,
+            satellite=satellite,
+            region=region,
+            start_time=scan_time_utc,
+        )
+        if len(downloaded_filepaths) == 16:
+            return read_netcdfs(local_filepaths=downloaded_filepaths)
+
+        raise ValueError(
+            f"Could not find well-formed scan. local: {len(local_filepaths)} files; "
+            f"downloaded: {len(downloaded_filepaths)} files"
+        )
+    raise ValueError(f"Could not find scan. local: {len(local_filepaths)} files")
+
+
+def read_netcdfs(local_filepaths, transform_func=None):
+    """Read scan defined by `filepaths` from the local filesystem as GoesScan.
 
     If `transform_func` is provided, then transform datasets defined by `filepaths` before
     returning.
 
     Parameters
     ----------
-    filepaths : list of str
+    local_filepaths : list of str
     transform_func : function
         (xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
 
@@ -24,7 +73,10 @@ def read_netcdfs(filepaths, transform_func=None):
     GoesScan
     """
     return GoesScan(
-        bands=[band.read_netcdf(filepath, transform_func) for filepath in filepaths]
+        bands=[
+            band.read_netcdf(local_filepath=filepath, transform_func=transform_func)
+            for filepath in local_filepaths
+        ]
     )
 
 

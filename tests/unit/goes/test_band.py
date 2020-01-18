@@ -71,7 +71,7 @@ def test_rescale_to_500m(reflective_band, emissive_band):
 
 
 def test_read_netcdf(wildfire_scan_filepaths):
-    actual = goes.read_netcdf(filepath=wildfire_scan_filepaths[0],)
+    actual = goes.read_netcdf(local_filepath=wildfire_scan_filepaths[0],)
     assert isinstance(actual, goes.GoesBand)
 
 
@@ -80,3 +80,22 @@ def test_normalize():
     actual = normalize(data=x)
     expected = st.zscore(x)
     np.testing.assert_array_equal(actual, expected)
+
+
+def test_get_goes_band_local(wildfire_scan_filepaths):
+    local_filepath = wildfire_scan_filepaths[0]
+    region, channel, satellite, scan_time = goes.utilities.parse_filename(local_filepath)
+
+    actual = goes.get_goes_band(
+        satellite="noaa-goes17",
+        region=region,
+        channel=channel,
+        scan_time_utc=scan_time,
+        local_directory=os.path.join("tests", "resources", "test_scan_wildfire"),
+        s3=False,
+    )
+    assert isinstance(actual, goes.GoesBand)
+    assert actual.band_id == channel
+    assert actual.region == region
+    assert actual.satellite == satellite
+    assert actual.scan_time_utc == scan_time
