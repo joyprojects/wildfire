@@ -1,5 +1,5 @@
 black == 19.10b0
-callist ~= 0.7
+callisto ~= 0.7
 pip-tools ~= 4.2
 pydocstyle ~= 4.0
 pylint ~= 2.4
