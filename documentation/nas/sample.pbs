@@ -19,7 +19,7 @@ module load comp-intel/2018.3.222
 source activate tf_9_gpu_k40
 
 # command to run:
-python3 goes-test.py
+python3 test.py
 
 source deactivate
 #end of script
