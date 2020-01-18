@@ -21,8 +21,8 @@ geostationary satellite imagery.
 The developers both suggest and use [conda](https://www.anaconda.com/distribution/) for
 managing python environments.
 
-Before starting the installation process, we strongly suggest setting up this package in an isolated
-python environment. Below are several usefule commands for doing so with conda.
+Before starting the installation process, we strongly suggest setting up this package in
+an isolated python environment. Below are several usefule commands for doing so with conda.
 
 - `conda create --name wildfire3.7 python=3.7` to create a python environment for this project
 - `source activate wildfire3.7` to activate the python environment
@@ -40,29 +40,42 @@ python environment. Below are several usefule commands for doing so with conda.
 ### Requirements
 
 1. To interact with S3 via [s3fs](https://s3fs.readthedocs.io/en/latest/)
-one either needs to have credentials stored at `~/.aws/credentials` (see [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file)) or the environment variables
-`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
+one either needs to have credentials stored at `~/.aws/credentials` (see
+[here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file))
+or the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
 
 ## documentation/
 
-Checkout the `documentation/examples/` directory for interacting with GOES data and NAS code examples.
-<!-- what can you find here? -->
+Various documentation around GOES satellite data, modelling, package usage, and working on
+NAS.
 
 ## wildfire/goes/
 
-Utilties for using NOAA's GOES-16/17 satellite data, which is publicly accessible in Amazon S3.
-<!-- what is in this module? -->
-<!-- what is goes? -->
+Utilities for using NOAA's GOES-16/17 satellite data, which is publicly accessible in
+ Amazon S3. See `documentation/notesbooks/example_usage.ipynb` for examples.
 
 ## wildfire/threshold_model/
 
-<!-- what is this modeule for? -->
+Implementation of Xu Zhong's threshold model for detecting wildfires (see
+[this paper](https://www.researchgate.net/publication/318455389_Real-time_wildfire_detection_and_tracking_in_Australia_using_geostationary_satellite_Himawari-8)
+for more information). See `documentation/notesbooks/example_usage.ipynb` for examples of
+our implementation, and
+`documentation/notesbooks/wildfire_detection_threshold_model.ipynb` for going through
+their paper.
 
 ## wildfire/wildfire.py
 
-<!-- what is this module for? -->
+Utilities for combining GOES satellite data and the wildfire detection threshold model to
+produce detection predictions. See `documentation/notesbooks/example_usage.ipynb` for
+examples.
 
 ## NAS
 
-<!-- stuff about how this package is made to work on NAS, but you should learn about it yourself... we have provided some things we've learned along the way -->
-<!-- link to documentation/nas/nas.md -->
+We developed this package with working in the NAS super-compute environment heavily in
+mind. Thus, we have worked a lot in it, and wanted to persist some of our learnings here
+for others to use (see `documentation/nas/`). We do want to make clear, however, that our
+notes are not meant as a replacement for the official documentation, merely a supplement.
+If you are setting up your NAS environment for the first time please refer to
+[their documentation](https://www.nas.nasa.gov/hecc/support/kb/), or if you are looking
+ for support please contact them for 24/7 service at 800-331-8737 or
+ <support@nas.nasa.gov>.
