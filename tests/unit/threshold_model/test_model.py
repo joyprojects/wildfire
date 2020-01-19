@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
 
-from wildfire import goes
+from wildfire import goes, wildfire
 from wildfire.threshold_model import model
 
 
 def test_predict_wildfire(all_bands_wildfire):
     wildfire_scan = goes.GoesScan(bands=all_bands_wildfire)
-    model_features = model.get_features(goes_scan=wildfire_scan)
+    model_features = wildfire.get_model_features_goes(goes_scan=wildfire_scan)
     actual_wildfire = model.predict(
         is_hot=model_features.is_hot,
         is_cloud=model_features.is_cloud,
@@ -19,7 +19,7 @@ def test_predict_wildfire(all_bands_wildfire):
 
 def test_predict_no_wildfire(all_bands_no_wildfire):
     no_wildfire_scan = goes.GoesScan(bands=all_bands_no_wildfire)
-    model_features = model.get_features(goes_scan=no_wildfire_scan)
+    model_features = wildfire.get_model_features_goes(goes_scan=no_wildfire_scan)
     no_actual_wildfire = model.predict(
         is_hot=model_features.is_hot,
         is_cloud=model_features.is_cloud,

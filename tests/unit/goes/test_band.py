@@ -7,14 +7,16 @@ import scipy.stats as st
 import xarray as xr
 
 from wildfire import goes
+from wildfire.goes.band import normalize
 
 
 def test_goes_band(reflective_band):
     actual = goes.GoesBand(dataset=reflective_band)
     assert actual.region == "M1"
-    assert actual.satellite == "noaa-goes17"
+    assert actual.satellite == "G17"
+    np.testing.assert_almost_equal(actual.band_wavelength_micrometers, 0.47, decimal=0)
     assert actual.scan_time_utc == datetime.datetime(2019, 10, 27, 20, 0, 27, 500000)
-    assert actual.band == 1
+    assert actual.band_id == 1
     assert actual.parse().equals(actual.reflectance_factor)
     assert np.isnan(actual.reflectance_factor.data).sum() == 0
     assert (
@@ -58,13 +60,42 @@ def test_filter_bad_pixels(emissive_band):
     )
 
 
-def test_from_netcdf_local():
-    actual = goes.read_netcdf(
-        filepath=os.path.join(
-            "tests",
-            "resources",
-            "test_scan_wildfire",
-            "OR_ABI-L1b-RadM1-M6C07_G17_s20193002000275_e20193002000344_c20193002000390.nc",
-        )
+def test_rescale_to_500m(reflective_band, emissive_band):
+    actual = goes.GoesBand(dataset=reflective_band).rescale_to_500m()
+    assert isinstance(actual, goes.GoesBand)
+    assert actual.dataset.Rad.shape == (500, 500)
+
+    actual = goes.GoesBand(dataset=emissive_band).rescale_to_500m()
+    assert isinstance(actual, goes.GoesBand)
+    assert actual.dataset.Rad.shape == (500, 500)
+
+
+def test_read_netcdf(wildfire_scan_filepaths):
+    actual = goes.read_netcdf(local_filepath=wildfire_scan_filepaths[0],)
+    assert isinstance(actual, goes.GoesBand)
+
+
+def test_normalize():
+    x = np.array([1, 2, 3, 4, 5])
+    actual = normalize(data=x)
+    expected = st.zscore(x)
+    np.testing.assert_array_equal(actual, expected)
+
+
+def test_get_goes_band_local(wildfire_scan_filepaths):
+    local_filepath = wildfire_scan_filepaths[0]
+    region, channel, satellite, scan_time = goes.utilities.parse_filename(local_filepath)
+
+    actual = goes.get_goes_band(
+        satellite="noaa-goes17",
+        region=region,
+        channel=channel,
+        scan_time_utc=scan_time,
+        local_directory=os.path.join("tests", "resources", "test_scan_wildfire"),
+        s3=False,
     )
     assert isinstance(actual, goes.GoesBand)
+    assert actual.band_id == channel
+    assert actual.region == region
+    assert actual.satellite == satellite
+    assert actual.scan_time_utc == scan_time

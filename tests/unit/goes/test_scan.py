@@ -11,7 +11,7 @@ from wildfire import goes
 def test_scan(all_bands_wildfire):
     actual = goes.GoesScan(bands=all_bands_wildfire)
     assert actual.region == "M1"
-    assert actual.satellite == "noaa-goes17"
+    assert actual.satellite == "G17"
     assert actual.scan_time_utc == datetime.datetime(2019, 10, 27, 20, 0, 27, 500000)
     assert list(actual.keys) == [f"band_{idx}" for idx in range(1, 17)]
     assert actual["band_1"].dataset.equals(actual.bands["band_1"].dataset)
@@ -34,7 +34,7 @@ def test_scan_init_bad_args(all_bands_wildfire):
         goes.GoesScan(bands=too_few_bands)
         assert "Missing bands" in error_message
 
-    all_bands_wildfire[15].attrs[
+    all_bands_wildfire[15].dataset.attrs[
         "dataset_name"
     ] = "OR_ABI-L1b-RadM1-M6C01_G16_s20193002000275_e20193002000332_c20193002000379.nc"
     with pytest.raises(ValueError) as error_message:
@@ -53,8 +53,25 @@ def test_rescale_to_500m(all_bands_wildfire):
         assert band_data.dataset.Rad.shape == (500, 500)
 
 
-def test_read_netcdfs_local():
-    actual = goes.read_netcdfs(
-        filepaths=glob.glob(os.path.join("tests", "resources", "test_scan_wildfire", "*"))
+def test_read_netcdfs(wildfire_scan_filepaths):
+    actual = goes.read_netcdfs(local_filepaths=wildfire_scan_filepaths)
+    assert isinstance(actual, goes.GoesScan)
+
+
+def test_get_goes_scan_local(wildfire_scan_filepaths):
+    local_filepath = wildfire_scan_filepaths
+    region, _, satellite, scan_time = goes.utilities.parse_filename(
+        local_filepath[0]
+    )
+
+    actual = goes.get_goes_scan(
+        satellite="noaa-goes17",
+        region=region,
+        scan_time_utc=scan_time,
+        local_directory=os.path.join("tests", "resources", "test_scan_wildfire"),
+        s3=False,
     )
     assert isinstance(actual, goes.GoesScan)
+    assert actual.region == region
+    assert actual.satellite == satellite
+    assert actual.scan_time_utc == scan_time

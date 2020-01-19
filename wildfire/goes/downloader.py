@@ -1,218 +1,166 @@
 # pylint: disable=line-too-long
-"""S3 interface to download NASA/NOAA GOES-R satellite images.
+"""S3 interface to interact with NASA/NOAA GOES-R satellite data.
 
-This module uses the boto3 library to interact with Amazon S3. boto3 requires the user to
+GOES-17: https://s3.console.aws.amazon.com/s3/buckets/noaa-goes17/?region=us-east-1
+GOES-16: https://s3.console.aws.amazon.com/s3/buckets/noaa-goes16/?region=us-east-1
+
+This module uses the s3fs library to interact with Amazon S3. s3fs requires the user to
 supply their access key id and secret access key. To provide boto3 with the necessary
 credentials the user must either have a `~/.aws/credentials` file, or the environment
 variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` set. See this package's README.md
 or boto3's documentation at https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file for more information.
 """
-import datetime
+from collections import namedtuple
 import logging
 import os
-import tempfile
 
-import boto3
-import xarray as xr
+import s3fs
 
 from . import utilities
 
+LOCAL_FILEPATH_FORMAT = "{local_directory}/{s3_key}"
+
+DownloadFileArgs = namedtuple(
+    "DownloadFileArgs", ("s3_filepath", "local_directory", "s3_filesystem")
+)
 _logger = logging.getLogger(__name__)
 
 
-def make_necessary_directories(filepath):
-    """Create any directories in `filepath` that don't exist.
-
-    Parameters
-    ----------
-    filepath : str
-    """
-    _logger.debug("Making necessary directories for %s", filepath)
-    os.makedirs(name=os.path.dirname(filepath), exist_ok=True)
-
-
-def persist_s3(s3_bucket, s3_key, local_directory):
-    """Download and persist specific scan from S3.
-
-    Parameters
-    ----------
-    s3_bucket : str
-    s3_key : str
-    local_directory : str
-
-    Returns
-    -------
-    str
-        File path scan was saved to.
-    """
-    s3 = boto3.client("s3")
-    local_filepath = utilities.build_local_path(
-        local_directory=local_directory, filepath=s3_key, satellite=s3_bucket
-    )
-    make_necessary_directories(filepath=local_filepath)
-    _logger.info(
-        "Persisting s3://%s/%s to %s", s3_bucket, s3_key, local_filepath,
-    )
-    s3.download_file(Bucket=s3_bucket, Key=s3_key, Filename=local_filepath)
-    return local_filepath
-
-
-def check_size_with_user(size):
-    """Check size of download with the user.
-
-    Parameters
-    ----------
-    size : float
-        Download size in gigabytes.
-    """
-    prompt = f"About to download {size:.0f}GB of data. Continue? [y/n]: "
-    prompt_accepted = False
-
-    while not prompt_accepted:
-        answer = input(prompt).lower().strip()
-        if answer == "y":
-            prompt_accepted = True
-        elif answer == "n":
-            raise AssertionError(f"User does not want to download {size:.0f}GB of data")
-
-
-def read_s3(s3_bucket, s3_key):
-    """Read specific scan from S3 as xarray Dataset.
-
-    Parameters
-    ----------
-    s3_bucket : str
-    s3_key : str
-
-    Returns
-    -------
-    xr.core.dataset.Dataset
-    """
-    s3 = boto3.client("s3")
-    with tempfile.NamedTemporaryFile() as temp_file:
-        s3.download_file(Bucket=s3_bucket, Key=s3_key, Filename=temp_file.name)
-        dataset = xr.open_dataset(temp_file.name)
-    return dataset
-
-
-def download_batch(s3_object_summaries, local_directory):
-    """Download batch of satellite scans from Amazon S3 matching input.
-
-    Parameters
-    ----------
-    s3_object_summaries : list of boto3.ObjectSummary
-        The output of `downloader.query_s3()` can be used as input here.
-    local_directory : str
-        Path to local directory at which to persist scans.
-
-    Returns
-    -------
-    list[str]
-        List of downloaded filepaths.
-    """
-    _logger.info(
-        "Downloading %dGB of data...",
-        int(sum(map(lambda scan: scan.size, s3_object_summaries)) / 1e9),
-    )
-    filepaths = []
-    for s3_scan in s3_object_summaries:
-        filepaths.append(
-            persist_s3(
-                s3_bucket=s3_scan.bucket_name,
-                s3_key=s3_scan.key,
-                local_directory=local_directory,
-            )
-        )
-    return filepaths
-
-
-def _is_good_object(key, regions, channels, start, end):
-    """Check if object should be downloaded, given parameters.
-
-    Check that the object is in the desired regions, channels, and date range.
-
-    Parameters
-    ----------
-    key : str
-        S3 key.
-    regions : list[str]
-    channels : list[int]
-    start : datetime.datetime
-        Start of date range.
-    end : datetime.datetime
-        End of date range.
-
-    Returns
-    -------
-    Boolean
-    """
-    region, channel, _, scan_started_at = utilities.parse_filename(filename=key)
-    return (
-        (region in regions)
-        and (channel in channels)
-        and (start <= scan_started_at <= end)
-    )
-
-
-def query_s3(satellite, regions, channels, start, end):
-    """Query Amazon S3 for data files that match the input.
+def list_s3_files(satellite, region, start_time, end_time=None, channel=None):
+    """List NOAA GOES-R series files in Amazon S3 matching parameters.
 
     Parameters
     ----------
     satellite : str
-        Amazon S3 bucket name. Either noaa-goes16 or noaa-goes17
-    regions : list[str]
-        "F", "C", "M1", or "M2"
-    channels : list[int]
-        1 - 16
-    start : datetime.datetime
-    end : datetime.datetime
+        Must be in set (noaa-goes16, noaa-goes17).
+    region : str
+        Must be in set (M1, M2, C, F).
+    channel : int, optional
+        Must be between 1 and 16 inclusive. By default `None` which will list all
+        channels.
+    start_time : datetime.datetime
+    end_time : datetime.datetime, optional
+        By default `None`, which will list all files whose scan start time matches
+        `start_time`.
 
     Returns
     -------
-    list of boto3.resources.factory.s3.ObjectSummary
+    list of str
     """
-    _logger.info(
-        """Querying for s3 objects with the following properties:
-    satellite: %s
-    regions: %s
-    channels: %s
-    start date: %s
-    end date: %s""",
-        satellite,
-        regions,
-        channels,
-        start,
-        end,
+    s3 = s3fs.S3FileSystem(anon=True, use_ssl=False)
+    glob_patterns = utilities.decide_fastest_glob_patterns(
+        directory=satellite,
+        satellite=satellite,
+        region=region,
+        start_time=start_time,
+        end_time=end_time,
+        channel=channel,
+        s3=True,
     )
-    s3 = boto3.resource("s3")
-    key_path_format = "{product_description}/{year}/{day_of_year}/{hour}/"
-    product_description_format = "ABI-L1b-Rad{region}"
+    _logger.info("Listing files in S3 using glob patterns: %s", glob_patterns)
+    filepaths = utilities.imap_function(s3.glob, glob_patterns, flatten=True)
+    if end_time is None:
+        return filepaths
+    return utilities.filter_filepaths(
+        filepaths=filepaths, start_time=start_time, end_time=end_time,
+    )
 
-    scans = []
-    for region in regions:
-        # only use the first character from region (M1 or M2 -> M)
-        product_description = product_description_format.format(region=region[0])
 
-        current = start.replace(minute=0, second=0, microsecond=0)
-        while current <= end:
-            key_filter = key_path_format.format(
-                product_description=product_description,
-                year=current.year,
-                day_of_year=current.strftime("%j"),
-                hour=current.strftime("%H"),
+def s3_filepath_to_local(s3_filepath, local_directory):
+    """Translate s3fs filepath to local filesystem filepath."""
+    _, key = s3fs.core.split_path(s3_filepath)
+    return LOCAL_FILEPATH_FORMAT.format(local_directory=local_directory, s3_key=key)
+
+
+def download_file(s3_filepath, local_directory, s3_filesystem=None):
+    """Download file to disk.
+
+    Local filepath will be of the form:
+        {local_direcory}/{s3_key}
+
+    Returns
+    -------
+    str
+        Local filepath to downloaded file.
+    """
+    s3_filesystem = (
+        s3_filesystem
+        if s3_filesystem is not None
+        else s3fs.S3FileSystem(anon=True, use_ssl=False)
+    )
+    local_path = s3_filepath_to_local(
+        s3_filepath=s3_filepath, local_directory=local_directory
+    )
+    os.makedirs(name=os.path.dirname(local_path), exist_ok=True)
+    s3_filesystem.get(rpath=s3_filepath, lpath=local_path)
+    return local_path
+
+
+def _download_file_mp(args):
+    """Download file to disk.
+
+    Meant to be used in parallel by `utilities.imap_function()`
+
+    Local filepath will be of the form:
+        {local_direcory}/{s3_key}
+
+    Returns
+    -------
+    str
+        Local filepath to downloaded file.
+    """
+    s3_filepath = args.s3_filepath
+    s3 = args.s3_filesystem
+    local_directory = args.local_directory
+
+    local_path = s3_filepath_to_local(
+        s3_filepath=s3_filepath, local_directory=local_directory
+    )
+    os.makedirs(name=os.path.dirname(local_path), exist_ok=True)
+    s3.get(rpath=s3_filepath, lpath=local_path)
+    return local_path
+
+
+def download_files(local_directory, satellite, region, start_time, end_time=None):
+    """Download files matching parameters to disk in parallel.
+
+    Parameters
+    ----------
+    local_directory : str
+    satellite : str
+        Must be in set (noaa-goes16, noaa-goes17).
+    region : str
+        Must be in set (M1, M2, C, F).
+    start_time : datetime.datetime
+    end_time : datetime.datetime, optional
+        By default `None`, which will list all files whose scan start time matches
+        `start_time`.
+
+    Returns
+    -------
+    list of str
+        Local filepaths to downloaded files.
+    """
+    s3 = s3fs.S3FileSystem(anon=True, use_ssl=False)
+
+    s3_filepaths = list_s3_files(
+        satellite=satellite, region=region, start_time=start_time, end_time=end_time
+    )
+
+    _logger.info(
+        "Downloading %d files using %d workers...", len(s3_filepaths), os.cpu_count()
+    )
+    local_filepaths = utilities.imap_function(
+        function=_download_file_mp,
+        function_args=[
+            DownloadFileArgs(
+                s3_filepath=s3_filepath, local_directory=local_directory, s3_filesystem=s3
             )
-            s3_scans = [
-                s3_object
-                for s3_object in s3.Bucket(satellite).objects.filter(Prefix=key_filter)
-                if _is_good_object(
-                    key=s3_object.key,
-                    regions=regions,
-                    channels=channels,
-                    start=start,
-                    end=end,
-                )
-            ]
-            scans += s3_scans
-            current += datetime.timedelta(hours=1)
-    return scans
+            for s3_filepath in s3_filepaths
+        ],
+    )
+    _logger.info(
+        "Downloaded %.5f GB of satellite data.",
+        sum(os.path.getsize(f) for f in local_filepaths) / 1e9,
+    )
+    return local_filepaths

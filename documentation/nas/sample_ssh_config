@@ -37,3 +37,5 @@ Host *.nas.nasa.gov lou lou? lfe? pfe?? ?fe *-last mfe?
         ServerAliveInterval     5m
 # Replace <nas_login_name> with your NAS username
         User                    <nas_login_name>
+# Replace <private_key_path> with the path to the private key used for indetification
+        IdentityFile            <private_key_path>

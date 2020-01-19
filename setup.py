@@ -1,4 +1,4 @@
-"""Packaging for the GOES library."""
+"""Packaging."""
 from setuptools import find_packages, setup
 
 
@@ -20,5 +20,5 @@ setup(
     tests_require=open("requirements-dev.in").readlines(),
     description="Modelling characteristics of wildfires",
     long_description="\n" + open("README.md").read(),
-    scripts=["bin/download_satellite_data", "bin/label_training_data"],
+    scripts=["bin/download_satellite_data", "bin/label_wildfires"],
 )

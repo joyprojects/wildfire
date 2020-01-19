@@ -5,4 +5,4 @@ set -euxo pipefail
 # -x print each command run to stdout
 # -o pipefail return the error status of the last command to exit
 
-pip-compile --no-index requirements.in requirements-dev.in -o requirements.txt
+pip-compile --no-index requirements.in -o requirements.txt

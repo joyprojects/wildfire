@@ -1,154 +1,225 @@
-"""Utilities to use across modules in the goes sub-package."""
+"""Common utilities for modules in the goes subpackage."""
 import datetime
+import glob
 import logging
 import multiprocessing
 import os
 import re
 
 import numpy as np
+import tqdm
 
-SATELLITE_CONVERSION = {
-    # satellite shorthand: satellite bucket name
-    "G16": "noaa-goes16",
-    "G17": "noaa-goes17",
-}
-REGION_TIME_RESOLUTION_MINUTES = {"M1": 1, "M2": 1, "C": 5, "F": 15}
+SATELLITE_SHORT_HAND = {"noaa-goes16": "G16", "noaa-goes17": "G17"}
+BASE_PATTERN_FORMAT = os.path.join(
+    "{directory}",
+    "ABI-L1b-Rad{region[0]}",
+    "{year}",
+    "{day_of_year}",
+    "{hour}",
+    "OR_ABI-L1b-Rad{region}-M?C{channel}_{satellite_short}_s{start_time}*.nc",
+)
 
 _logger = logging.getLogger(__name__)
 
 
-def pool_function(function, function_args, num_workers=None):
-    """Run `function` across multiple workers in parallel.
+def group_filepaths_into_scans(filepaths):
+    """Group bands in `filepaths` that belong to the same scan.
 
-    User should read documentation on `multiprocessing.Pool` before using this method.
-    https://docs.python.org/3.7/library/multiprocessing.html
+    A scan is defined as files that have the same satellite, region, and scan start time.
 
     Parameters
     ----------
-    function : function
-        Function to pool across multiple threads.
-    function_args : iterable
-        Arguments to iteratively pass to `function` across multiple threads. All elements
-        must be pickleable.
-    num_workers : int
-        Optional, the number of workers over which to pool `function`. Defaults to `None`
-        in which case it will be set to the number of cores on the machine. If not `None`,
-        it must be less than or equal to the number of cores available on the machine.
+    filepaths : list of str
 
     Returns
     -------
-    list of Any
-        An iterator over the return values of `function` across the number of threads.
-        Length is `num_workers`.
+    list of list of str
+        Each sublist is a specific scan.
     """
-    max_workers_allowed = multiprocessing.cpu_count()
-    num_workers = num_workers if num_workers is not None else max_workers_allowed
+    scan_times = [parse_filename(filepath)[3] for filepath in filepaths]
+    unique_scan_times, unique_indices = np.unique(scan_times, return_inverse=True)
+    groups = [[] for i in range(len(unique_scan_times))]
+    for scan_time_idx, unique_idx in enumerate(unique_indices):
+        groups[unique_idx].append(filepaths[scan_time_idx])
+    return groups
 
-    if num_workers > max_workers_allowed:
-        _logger.info(
-            "Setting `num_threads` from %d to %d, since machine has %d cores.",
-            num_workers,
-            max_workers_allowed,
-            max_workers_allowed,
+
+def decide_fastest_glob_patterns(
+    directory, satellite, region, start_time, end_time, channel=None, s3=False
+):
+    """From the provided input, compile the glob patterns for multiprocessing.
+
+    Parameters
+    ----------
+    directory : str
+        Local directory in which to search for files.
+    satellite : str
+        Must be in set (noaa-goes16, noaa-goes17).
+    region : str
+        Must be in set (M1, M2, C, F).
+    channel : int, optional
+        Must be between 1 and 16 inclusive. Default to `None` which sets channel to
+        `"??"` to match all channels.
+    start_time : datetime.datetime
+    end_time : datetime.datetime
+    s3 : bool, optional
+        Whether glob patterns should be formatted for s3 filepaths or local filepaths. By
+        default False, which formats glob patterns for the local filesystem.
+
+    Returns
+    -------
+    list of str
+    """
+    channel = str(channel).zfill(2) if channel is not None else "??"
+    base_pattern = (
+        BASE_PATTERN_FORMAT if not s3 else BASE_PATTERN_FORMAT.replace(os.sep, "/")
+    )
+
+    satellite_short = SATELLITE_SHORT_HAND[satellite]
+    if end_time is None:
+        return [
+            base_pattern.format(
+                directory=directory,
+                satellite_short=satellite_short,
+                region=region,
+                year=start_time.strftime("%Y"),
+                day_of_year=start_time.strftime("%j"),
+                hour=start_time.strftime("%H"),
+                start_time=start_time.strftime("%Y%j%H%M"),
+                channel=channel,
+            )
+        ]
+
+    if start_time.year != end_time.year:
+        return [
+            base_pattern.format(
+                directory=directory,
+                satellite_short=satellite_short,
+                region=region,
+                year=str(year),
+                day_of_year="*",
+                hour="*",
+                start_time="*",
+                channel=channel,
+            )
+            for year in range(start_time.year, end_time.year + 1)
+        ]
+
+    if start_time.date() != end_time.date():
+        return [
+            base_pattern.format(
+                directory=directory,
+                satellite_short=satellite_short,
+                region=region,
+                year=start_time.strftime("%Y"),
+                day_of_year=str(day_of_year).zfill(3),
+                hour="*",
+                start_time="*",
+                channel=channel,
+            )
+            for day_of_year in range(
+                int(start_time.strftime("%j")), int(end_time.strftime("%j")) + 1
+            )
+        ]
+
+    if start_time.hour != end_time.hour:
+        return [
+            base_pattern.format(
+                directory=directory,
+                satellite_short=satellite_short,
+                region=region,
+                year=start_time.strftime("%Y"),
+                day_of_year=start_time.strftime("%j"),
+                hour=str(hour).zfill(2),
+                start_time="*",
+                channel=channel,
+            )
+            for hour in range(start_time.hour, end_time.hour + 1)
+        ]
+
+    return [
+        base_pattern.format(
+            directory=directory,
+            satellite_short=satellite_short,
+            region=region,
+            year=start_time.strftime("%Y"),
+            day_of_year=start_time.strftime("%j"),
+            hour=start_time.strftime("%H"),
+            start_time="*",
+            channel=channel,
         )
-        num_workers = max_workers_allowed
-    _logger.info("Pooling function '%s' over %d workers", function.__name__, num_workers)
-    with multiprocessing.Pool(processes=num_workers) as pool:
-        results = pool.map(func=function, iterable=function_args)
-    return results
+    ]
 
 
-def create_time_range(start, end, minutes):
-    """Create time range from `start` to `end` .
+def filter_filepaths(filepaths, start_time, end_time):
+    """Remove filepaths that are outside of `start_time` and `end_time`.
 
     Parameters
     ----------
-    start : datetime.datetime
-    end : datetime.datetime
-    minutes : int
-        Number of minutes to add to the previous datetime element to get the next one.
+    filepaths : list of str
+    start_time : datetime.datetime
+    end_time : datetime.datetime
 
     Returns
     -------
-        list of datetime.datetime
+    list of str
     """
-    time_range = []
-    current = start
-    while current <= end:
-        time_range.append(current)
-        current += datetime.timedelta(minutes=minutes)
-    return time_range
+    return [
+        filepath
+        for filepath in filepaths
+        if start_time <= parse_filename(filename=filepath)[3] <= end_time
+    ]
 
 
-def normalize(data):
-    """Normalize data to be centered around 0.
-
-    Parameters
-    ----------
-    data : np.ndarray | xr.core.dataarray.DataArray
-
-    Returns
-    -------
-    np.ndarray | xr.core.dataarray.DataArray
-    """
-    return (data - data.mean()) / data.std()
-
-
-def find_scans_closest_to_time(s3_scans, desired_time):
-    """Find all scans in set with the closest scan start time to the desired time.
-
-    If multiple bands were requested when producing `s3_scans` then that the number
-    of bands requested should match the number of scans returned by this method.
-
-    Parameters
-    ----------
-    s3_scans : list of boto3.resources.factory.s3.ObjectSummary
-    desired_time : datetime.datetime
-
-    Returns
-    -------
-    list of boto3.resources.factory.s3.ObjectSummary
-        Length should match the number of bands requested when producting `s3_scans`.
-    """
-    scan_times = np.array([parse_filename(s3_scan.key)[3] for s3_scan in s3_scans])
-    closest_time = scan_times[np.argmin(abs(scan_times - desired_time))]
-    return np.array(s3_scans)[np.where(scan_times == closest_time)].tolist()
-
-
-def build_local_path(local_directory, filepath, satellite):
-    """Build local path (matched S3 file structure).
+def list_local_files(
+    local_directory, satellite, region, start_time, end_time=None, channel=None
+):
+    """List local files that match parameters.
 
     Parameters
     ----------
     local_directory : str
-    filepath : str
+        Local directory for which to list files.
     satellite : str
+        Must be in set (noaa-goes16, noaa-goes17).
+    region : str
+        Must be in set (M1, M2, C, F).
+    channel : int, optional
+        Must be between 1 and 16 inclusive. By default `None` which will list all
+        channels.
+    start_time : datetime.datetime
+    end_time : datetime.datetime, optional
+        By default `None`, which will list all files whose scan start time matches
+        `start_time`.
 
     Returns
     -------
-    str
-        e.g. {local_directory}/noaa-goes17/ABI-L1b-RadM/2019/300/20/
-        OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
+    list of str
     """
-    return os.path.join(local_directory, satellite, filepath)
+    glob_patterns = decide_fastest_glob_patterns(
+        directory=local_directory,
+        satellite=satellite,
+        region=region,
+        channel=channel,
+        start_time=start_time,
+        end_time=end_time,
+    )
+    filepaths = imap_function(glob.glob, glob_patterns, flatten=True)
+    if end_time is not None:
+        return filter_filepaths(
+            filepaths=filepaths, start_time=start_time, end_time=end_time,
+        )
+    return filepaths
 
 
 def parse_filename(filename):
-    """Parse necessary information from the filename.
-
-    This method also verifies correct filename input.
-
-    Examples
-    --------
-    OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc
-    Region = M1
-    Channel = 14
-    Satellite = noaa-goes17
-    Scan Start Time = 2019-10-27 20:48:27.5
+    """Parse region, channel, satellite and started_at from filename.
 
     Parameters
     ----------
     filename : str
+        Either a filepath or filename for a goes scan. Must be of the form:
+            OR_ABI-L1b-RadM1-M6C01_G17_s20193351027275_e20193351027332_c20193351027383.nc
 
     Returns
     -------
@@ -159,6 +230,134 @@ def parse_filename(filename):
         r"OR_ABI-L1b-Rad(.*)-M\dC(\d{2})_(G\d{2})_s(.*)_e.*_c.*.nc", filename
     ).groups()
     started_at = datetime.datetime.strptime(started_at, "%Y%j%H%M%S%f")
-    satellite = SATELLITE_CONVERSION[satellite]
     channel = int(channel)
     return region, channel, satellite, started_at
+
+
+def map_function(function, function_args, flatten=False):
+    """Map function arguments across function in parallel.
+
+    Uses the number of cores available on the machine as the number of workers. Uses
+    multiprocessing's `map` function.
+
+    https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool.map
+
+    User should read documentation on `multiprocessing.Pool` before using this method.
+    https://docs.python.org/3.7/library/multiprocessing.html
+
+    Parameters
+    ----------
+    function : function
+        Function to pool across multiple threads.
+    function_args : list of Any
+        Arguments to iteratively pass to `function` across multiple threads. All elements
+        must be pickleable. Only supports one iterable argument.
+    flatten : bool, optional
+        Whether to flatten a nested list to 1 dimenstion. By default False, which will
+        not flatten.
+
+    Returns
+    -------
+    list of Any
+        A list over the return values of `function` across the number of threads.
+        Length is equal to `len(function_args)`.
+    """
+    _logger.info(
+        "Using %s workers to run %s...", multiprocessing.cpu_count(), function.__name__
+    )
+    pool = multiprocessing.Pool()
+    worker_results = pool.map(function, function_args)
+    pool.close()
+    pool.join()
+
+    if flatten:
+        return _flatten(worker_results)
+    return worker_results
+
+
+def imap_function(function, function_args, flatten=False):
+    """Map function arguments across function in parallel.
+
+    Uses the number of cores available on the machine as the number of workers. Uses
+    multiprocessing's `imap` in order to log a progress bar over its progress.
+
+    https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool.imap
+
+    User should read documentation on `multiprocessing.Pool` before using this method.
+    https://docs.python.org/3.7/library/multiprocessing.html
+
+    Parameters
+    ----------
+    function : function
+        Function to pool across multiple threads.
+    function_args : list of Any
+        Arguments to iteratively pass to `function` across multiple threads. All elements
+        must be pickleable. Only supports one iterable argument.
+    flatten : bool, optional
+        Whether to flatten a nested list to 1 dimenstion. By default False, which will
+        not flatten.
+
+    Returns
+    -------
+    list of Any
+        A list over the return values of `function` across the number of threads.
+        Length is equal to `len(function_args)`.
+    """
+    _logger.info(
+        "Using %s workers to run %s...", multiprocessing.cpu_count(), function.__name__
+    )
+    pool = multiprocessing.Pool()
+    worker_map = pool.imap(function, function_args)
+    worker_results = list(tqdm.tqdm(worker_map, total=len(function_args)))
+    pool.close()
+    pool.join()
+
+    if flatten:
+        return _flatten(worker_results)
+    return worker_results
+
+
+def starmap_function(function, function_args, flatten=False):
+    """Map function arguments across function in parallel.
+
+    Uses the number of cores available on the machine as the number of workers. Uses
+    multiprocessing's `starmap`. Starmap allows for `function`s that take multiple
+    arguments.
+
+    https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool.starmap
+
+    User should read documentation on `multiprocessing.Pool` before using this method.
+    https://docs.python.org/3.7/library/multiprocessing.html
+
+    Parameters
+    ----------
+    function : function
+        Function to pool across multiple threads.
+    function_args : list of list of Any
+        Arguments to iteratively pass to `function` across multiple threads. All elements
+        must be pickleable. Only supports one iterable argument.
+    flatten : bool, optional
+        Whether to flatten a nested list to 1 dimenstion. By default False, which will
+        not flatten.
+
+    Returns
+    -------
+    list of Any
+        A list over the return values of `function` across the number of threads.
+        Length is equal to `len(function_args)`.
+    """
+    _logger.info(
+        "Using %s workers to run %s...", multiprocessing.cpu_count(), function.__name__
+    )
+    pool = multiprocessing.Pool()
+    worker_results = pool.starmap(function, function_args)
+    pool.close()
+    pool.join()
+
+    if flatten:
+        return _flatten(worker_results)
+    return worker_results
+
+
+def _flatten(list_2d):
+    return [item for list_1d in list_2d for item in list_1d]
