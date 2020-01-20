@@ -117,6 +117,13 @@ class GoesScan:
             filename=bands[0].dataset.dataset_name
         )
 
+    def __repr__(self):
+        """Represent GoesScan."""
+        return (
+            f"GoesScan(satellite={self.satellite}, region={self.region}, "
+            f"scan_time={self.scan_time_utc:%Y-%m-%dT%H:%M:%S})"
+        )
+
     def __getitem__(self, key):
         """Get the GoesBand at a specific band in the scan.
 
@@ -243,7 +250,7 @@ class GoesScan:
         num_cols = min([num_bands, max_cols])
         num_rows = math.ceil(num_bands / max_cols)
         _, axes = plt.subplots(
-            ncols=num_cols, nrows=num_rows, figsize=(10 * num_cols, 8 * num_rows)
+            ncols=num_cols, nrows=num_rows, figsize=(10 * num_cols, 7 * num_rows)
         )
         axes = np.ravel(axes)
         axes_images = []

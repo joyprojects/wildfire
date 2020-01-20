@@ -308,7 +308,9 @@ def imap_function(function, function_args, flatten=False):
     )
     pool = multiprocessing.Pool()
     worker_map = pool.imap(function, function_args)
-    worker_results = list(tqdm.tqdm(worker_map, total=len(function_args)))
+    worker_results = list(
+        tqdm.tqdm(worker_map, total=len(function_args), desc=function.__name__)
+    )
     pool.close()
     pool.join()
 

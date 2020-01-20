@@ -3,7 +3,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from wildfire.goes import band
+from wildfire.goes.band import normalize
 
 ModelFeatures = namedtuple(
     "ModelFeatures", ("is_hot", "is_cloud", "is_water", "is_night")
@@ -60,10 +60,9 @@ def is_hot_pixel(brightness_temperature_3_89, brightness_temperature_11_19):
     -------
     np.ndarray of bool
     """
-    condition_1 = band.normalize(data=brightness_temperature_3_89) > 2
+    condition_1 = normalize(data=brightness_temperature_3_89) > 2
     condition_2 = (
-        band.normalize(data=brightness_temperature_3_89 - brightness_temperature_11_19)
-        > 3
+        normalize(data=brightness_temperature_3_89 - brightness_temperature_11_19) > 3
     )
     return condition_1 & condition_2
 
