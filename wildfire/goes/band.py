@@ -114,6 +114,14 @@ class GoesBand:
         ) = utilities.parse_filename(filename=dataset.dataset_name)
         self.band_wavelength_micrometers = dataset.band_wavelength.data[0]
 
+    def __repr__(self):
+        """Represent GoesBand."""
+        return (
+            f"GoesBand(satellite={self.satellite}, region={self.region}, "
+            f"band={self.band_id}, wavelength={self.band_wavelength_micrometers:.2f}µm, "
+            f"scan_time={self.scan_time_utc:%Y-%m-%dT%H:%M:%S})"
+        )
+
     def plot(self, axis=None, use_radiance=False, **xr_imshow_kwargs):
         """Plot the band.
 
