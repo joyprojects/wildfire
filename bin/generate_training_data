@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+import datetime
+import json
+import logging
+import os
+
+import click
+import numpy as np
+import torch
+
+from wildfire import wildfire
+from wildfire.goes import utilities, scan
+
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
+WILDFIRE_FILENAME = "wildfires_{satellite}_{region}_s{start}_e{end}_c{created}.json"
+
+logging.basicConfig(level=logging.INFO)
+_logger = logging.getLogger(__name__)
+
+def extract_patches_2d(arr, height, width, stride):
+    assert len(arr.shape) >= 2
+    H, W = arr.shape[:2]
+    ih = np.arange(0,H,stride)
+    iw = np.arange(0,W,stride)
+    patches = []
+    for i in ih:
+        i = min(i, H-height)
+        for j in iw:
+            j = min(j, W-width)
+            patches.append(arr[i:i+height, j:j+height][np.newaxis])
+    return np.concatenate(patches)
+
+#@click.command()
+#@click.argument("goes_directory", type=click.Path(exists=True, file_okay=False))
+#@click.argument("wildfire_firename", type=click.Path(exists=True, file_okay=False))
+#@click.argument("training_directory", type=click.Path(exists=False, file_okay=False))
+def make_examples(goes_directory='downloaded_data',
+                  wildfire_filename='labeled_wildfires/wildfires_noaa-goes17_M1_s2019-10-31T01:00:00_e2019-11-01T01:11:00_c2020-02-29T06:31:49.json',
+                  training_directory='.tmp/training-data',
+                  patch_size=32):
+    """Generating a training dataset using the output of label_wildfires
+    Select 32x32x16 patches with pixelwise wildfire labels
+
+    GOES_DIRECTORY is a path to a local directory at which to look for scans. Directory
+    must already exist. e.g. ./downloaded_data\n
+    WILDFIRES_DIRECTORY is a path to a local directory at which to persist wildfires.
+    TRAINING_DIRECTORY is a path to a local directory at which to persist training data.
+    """
+    _logger.info(
+        """Generating Training Data\n
+    GOES Directory: %s
+    Wildfire File: %s
+    Training Data: %s""",
+        goes_directory,
+        wildfire_filename,
+        training_directory,
+    )
+
+    if not os.path.exists(training_directory):
+        os.makedirs(training_directory)
+
+    wildfires = json.load(open(wildfire_filename, 'rU'))
+    satellite = os.path.basename(wildfire_filename).split("_")[1]
+
+    # Iterate through wildfire labels
+    # This could/should be done with MPI
+    for key, val in wildfires.items():
+        scan_time = datetime.datetime.strptime(val['scan_time_utc'][:-6], DATETIME_FORMAT)
+        start_time = scan_time - datetime.timedelta(seconds=1)
+        end_time = scan_time + datetime.timedelta(seconds=1)
+        # get files of current scan
+        filepaths = utilities.list_local_files(
+                        local_directory=goes_directory,
+                        satellite=satellite,
+                        region=val['region'],
+                        start_time=start_time,
+                        end_time=end_time)
+
+        # load scan and get wildfire map
+        goes_scan = scan.read_netcdfs(local_filepaths=filepaths)
+        imap = wildfire.predict_wildfires_goes(goes_scan)
+
+        # extract sub-images for training
+        stride = 30
+        imap_patches = extract_patches_2d(imap, patch_size, patch_size, stride)
+        scan_data = [g.rescale_to_500m().parse().values[:,:,np.newaxis] for _, g in goes_scan.iteritems()]
+        scan_data = np.concatenate(scan_data, 2)
+        scan_patches = extract_patches_2d(scan_data, patch_size, patch_size, stride)
+
+        fire_patches = np.any(imap_patches, axis=(1,2))
+        for idx in np.where(fire_patches)[0]:
+            inputs = scan_patches[idx]
+            label = imap_patches[idx]
+            example_file = os.path.join(training_directory, val['scan_time_utc'] + f'_{idx}.torch')
+            # save to disk
+            torch.save({'inputs': inputs, 'label': label}, example_file)
+
+    _logger.info("Completed.")
+
+
+
+if __name__ == "__main__":
+    make_examples()
