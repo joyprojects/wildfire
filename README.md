@@ -35,6 +35,7 @@ an isolated python environment. Below are several usefule commands for doing so 
 1. `cp .sample_env .env` and fill out any `<>` blocks
 1. `set -o allexport && source .env && set +o allexport` to export environment variables
 1. `pip install -r requirements.txt` to install dependencies
+1. `conda install mpi4py torch cudatoolkit`
 1. `pip install -r requirements-dev.in` to install test dependencies
 1. `scripts/test-it` to verify installation
 
@@ -58,6 +59,8 @@ satellite data with wildfires.
 `bin/label_wildfires noaa-goes17 M1 2019-01-01T01:00:00 2019-02-01T01:00:00 goes_data labeled_wildfires`
 
 - To label wildfires in GOES data from the GOES-17 satellite over the mesoscale 1 region between Jan 1, 2019 01:00 AM and Feb 1, 2019 01:00 AM found in the "goes_data/" directory and persist any wildfires found to the "labeled_wildfires" directory
+
+- (MPI) Fires can be labeled in parallel across multiple nodes on NAS. mpi4py is used to distribute scans across the number of nodes,`bin/label_wildfires.mpi.py`. This script is executed across several nodes and processed with a PBS job, `bin/label_wildfires.mpi.pbs`. Please review and edit selected queues, number of nodes/cpus, and mpi process size in `*.pbs` scripts. For job setup see [https://www.nas.nasa.gov/hecc/support/kb/121/]
 
 ## documentation/
 
