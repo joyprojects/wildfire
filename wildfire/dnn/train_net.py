@@ -4,6 +4,9 @@ import logging
 import torch
 import torch.nn as nn
 from torch.utils import data
+from torch.utils.tensorboard import SummaryWriter
+
+import torchvision
 
 import dataloader
 import networks
@@ -13,28 +16,110 @@ _logger = logging.getLogger(__name__)
 
 model_path = '/nobackupp10/tvandal/wildfire/.tmp/models/first_model/'
 data_path = '/nobackupp10/tvandal/wildfire/.tmp/training-data/'
+
+def normalize_image(x):
+    mx = torch.max(x)
+    mn = torch.min(x)
+    x = (x - mn) / (mx - mn)
+    return x
+
+
+
+class CNNTrainer(nn.Module):
+    def __init__(self, params):
+        super(CNNTrainer, self).__init__()
+        self.params = params
+
+        # load model
+        self.net = networks.BasicCNNClassifier(params['hidden'])
+
+        # define optimizer
+        self.global_step = 0.
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=params['lr'])
+
+        # define a loss
+        self.cross_entropy = nn.BCELoss()
+
+        # set checkpoint file
+        model_path = params['model_path']
+        self.checkpoint_filename = os.path.join(model_path, 'checkpoint.torch')
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        # Summary writer for tensorboard
+        self.tfwriter = SummaryWriter(os.path.join(params['model_path'], 'classifier.tfsummary'))
+
+    def gen_update(self, x, y, log=False):
+        # make prediction
+        yhat = self.net(x)
+
+        # compute loss
+        loss = self.cross_entropy(yhat, y)
+
+        # minimize loss and update weights 
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        if log:
+            _logger.info(f"Step: {self.global_step},  Loss: {loss.item()}")
+
+            self.tfwriter.add_scalar("loss/cross_entropy", loss, global_step=self.global_step)
+
+            grid_inputs = torchvision.utils.make_grid(x[:4,[1,2,0]])
+            grid_labels = torchvision.utils.make_grid(y[:4])
+            grid_predictions = torchvision.utils.make_grid(yhat[:4])
+
+            self.tfwriter.add_image("inputs", normalize_image(grid_inputs), global_step=self.global_step)
+            self.tfwriter.add_image("labels", grid_labels, global_step=self.global_step)
+            self.tfwriter.add_image("predictions", grid_predictions, global_step=self.global_step)
+
+            prediction = yhat > 0.5
+            correct = torch.sum(prediction == y)
+            acc = correct.float() / y.numel()
+            self.tfwriter.add_scalar("accuracy", acc, global_step=self.global_step)
+
+            for c in range(0, x.shape[1]):
+                self.tfwriter.add_histogram(f"inputs/channel_{c+1}", x[:,c], global_step=self.global_step)
+
+        self.global_step += 1
+
+    def save_checkpoint(self):
+        state = {'state_dict': self.net.state_dict(),
+                 'optimizer': self.optimizer.state_dict(),
+                 'global_step': self.global_step}
+        torch.save(state, self.checkpoint_filename)
+
+    def load_checkpoint(self):
+        checkpoint_file = self.checkpoint_filename
+        if not os.path.isfile(checkpoint_file):
+            _logger.info("Checkpoint does not exists: %s" % checkpoint_file)
+            return
+        checkpoint = torch.load(checkpoint_file)
+        _logger.info("checkpoint_file: %s" % checkpoint_file)
+        self.global_step = checkpoint['global_step']
+        self.net.load_state_dict(checkpoint['state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+
 def train(model_path=model_path,
           data_path=data_path,
-          epochs=5,
-          batch_size=10,
-          lr=1e-3):
+          total_steps=10000,
+          batch_size=32,
+          lr=1e-3,
+          hidden=16,
+          log_step=100,
+          save_step=100):
 
-    # set checkpoint file
-    checkpoint_filename = os.path.join(model_path, 'checkpoint.flownet.pth.tar')
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
+    training_params = dict(batch_size=batch_size,
+                           lr=lr, model_path=model_path, hidden=hidden)
 
     # set device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # load model
-    net = networks.BasicCNNClassifier(16)
-
-    # define optimizer
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr)
-
-    # define a loss
-    bce_loss = nn.BCELoss()
+    # set trainer
+    trainer = CNNTrainer(training_params)
+    trainer.net = trainer.net.to(device)
+    trainer.load_checkpoint()
 
     # load wildfire iterator
     wildfires = dataloader.WildfireThreshold(data_path)
@@ -42,29 +127,17 @@ def train(model_path=model_path,
                    'num_workers': 20, 'pin_memory': True}
     training_generator = data.DataLoader(wildfires, **data_params)
 
-    step = 0
-    for epoch in range(0, epochs):
+    while trainer.global_step < total_steps:
         for batch_idx, (inputs, labels) in enumerate(training_generator):
             '''
             Inputs need to be normalized per band with global mean and std
             '''
-            # make prediction
-            yhat = net(inputs)
+            step = trainer.global_step
+            log = True if (step % log_step == 0) else False
+            trainer.gen_update(inputs.to(device), labels.to(device), log=log)
 
-            # compute loss 
-            loss = bce_loss(yhat, labels)
-
-            # optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            _logger.info(f"Epoch: {epoch}, Batch: {batch_idx}, Loss: {loss.item()}")
-
-
-
-    state = {'epoch': epoch, 'state_dict': net.state_dict(),
-             'optimizer': optimizer.state_dict()}
-    torch.save(state, checkpoint_filename)
+            if (step % save_step == 0):
+                trainer.save_checkpoint()
 
 
 if __name__ == "__main__":

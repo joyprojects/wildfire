@@ -68,6 +68,7 @@ def make_examples(goes_directory='downloaded_data',
         scan_time = datetime.datetime.strptime(val['scan_time_utc'][:-6], DATETIME_FORMAT)
         start_time = scan_time - datetime.timedelta(seconds=1)
         end_time = scan_time + datetime.timedelta(seconds=1)
+
         # get files of current scan
         filepaths = utilities.list_local_files(
                         local_directory=goes_directory,
@@ -83,7 +84,7 @@ def make_examples(goes_directory='downloaded_data',
         # extract sub-images for training
         stride = 30
         imap_patches = extract_patches_2d(imap, patch_size, patch_size, stride)
-        scan_data = [g.rescale_to_500m().parse().values[:,:,np.newaxis] for _, g in goes_scan.iteritems()]
+        scan_data = [g.rescale_to_500m().normalize().values[:,:,np.newaxis] for _, g in goes_scan.iteritems()]
         scan_data = np.concatenate(scan_data, 2)
         scan_patches = extract_patches_2d(scan_data, patch_size, patch_size, stride)
 
