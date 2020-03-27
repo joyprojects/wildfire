@@ -18,5 +18,6 @@ class WildfireThreshold(Dataset):
         example = torch.load(self.filelist[idx])
         inputs = example['inputs'].astype(np.float32)
         label = example['label'].astype(np.float32)
+        inputs[np.isnan(inputs)] = 0.
         return np.transpose(inputs, (2,0,1)), label[np.newaxis]
 
