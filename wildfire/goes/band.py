@@ -185,13 +185,13 @@ class GoesBand:
         parsed_data = self.parse()
         return normalize(parsed_data)
 
-    def rescale_to_500m(self):
-        """Scale band to 500 meters x 500 meters.
+    def rescale_to_2km(self):
+        """Scale band to 2km meters x 2km meters.
 
         The spatial resolution is band-dependent:
-            500 m: bands 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-            1 km: bands 1, 3, 5
-            2 km: band 2
+            2 km: bands 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+            500 m: bands 1, 3, 5
+            1 km: band 2
 
         Notes
         -----
@@ -205,11 +205,11 @@ class GoesBand:
             A `GoesBand` object where each band has been rescaled to 500 meters.
         """
         if self.band_id in (1, 3, 5):
-            rescaled_data = self.dataset.thin(2)  # 1km -> 500m
+            rescaled_data = self.dataset.thin(2)  # 500m -> 2km
         elif self.band_id == 2:
-            rescaled_data = self.dataset.thin(4)  # 2km -> 500m
+            rescaled_data = self.dataset.thin(4)  # 1km -> 2km
         else:
-            rescaled_data = self.dataset  # 500m -> 500m
+            rescaled_data = self.dataset  # 2km -> 2km
 
         return GoesBand(dataset=rescaled_data)
 

@@ -177,7 +177,7 @@ class GoesScan:
         """
         return self.bands.items()
 
-    def rescale_to_500m(self):
+    def rescale_to_2km(self):
         """Scale all bands to 500 meters.
 
         The spatial resolution is band-dependent:
@@ -199,7 +199,7 @@ class GoesScan:
         GoesScan
             A `GoesScan` object where each band has been spatially rescaled to 500 meters.
         """
-        rescaled_datasets = [band.rescale_to_500m() for _, band in self.iteritems()]
+        rescaled_datasets = [band.rescale_to_2km() for _, band in self.iteritems()]
         return GoesScan(bands=rescaled_datasets)
 
     def to_netcdf(self, directory):
