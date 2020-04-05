@@ -71,7 +71,7 @@ def get_file_examples(fire_file):
     x_2km = band16.dataset.x.values
     y_2km = band16.dataset.y.values
     for band, s in abi_scan_2km.iteritems():
-        rads.append(s.parse())
+        rads.append(s.normalize())
         rads[-1] = rads[-1].assign_coords(x=x_2km, y=y_2km)
         
     scan_rads = xr.concat(rads, 'band')
@@ -86,7 +86,7 @@ def get_file_examples(fire_file):
 
 if rank == 0:
     fire_files = glob.glob(fire_path.format(year, dayofyear, '*') + '*.nc')
-    n = len(fire_files) // size
+    n = len(fire_files) // (size-1)
     fire_files = [fire_files[i:i+n] for i in range(0, len(fire_files), n)]
     print(len(fire_files))
 else:
@@ -94,10 +94,9 @@ else:
 
 fire_files = comm.scatter(fire_files, root=0)
 collect_examples = []
-for f in fire_files:
+for f in fire_files[:10]: #@TODO remove
     examples = get_file_examples(f)
     collect_examples.append(examples)
-    break
 
 examples = np.concatenate(collect_examples, axis=0)
 

@@ -14,8 +14,9 @@ import networks
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-model_path = '/nobackupp10/tvandal/wildfire/.tmp/models/first_model/'
-data_path = '/nobackupp10/tvandal/wildfire/.tmp/training-data/'
+model_path = '/nobackupp10/tvandal/wildfire/.tmp/models/noaa-wildfire-bigger-dropout/'
+#data_path = '/nobackupp10/tvandal/wildfire/.tmp/training-data/'
+data_path = '/nobackupp10/tvandal/wildfire/.tmp/training-data/abi-noaal1b-F/'
 
 def normalize_image(x):
     mx = torch.max(x)
@@ -24,14 +25,14 @@ def normalize_image(x):
     return x
 
 
-
 class CNNTrainer(nn.Module):
     def __init__(self, params):
         super(CNNTrainer, self).__init__()
         self.params = params
 
         # load model
-        self.net = networks.BasicCNNClassifier(params['hidden'])
+        #self.net = networks.BasicCNNClassifier(params['hidden'])
+        self.net = networks.BiggerCNNClassifier(params['hidden'])
 
         # define optimizer
         self.global_step = 0.
@@ -54,7 +55,10 @@ class CNNTrainer(nn.Module):
         yhat = self.net(x)
 
         # compute loss
-        loss = self.cross_entropy(yhat, y)
+        h = y.shape[2]
+        pad = (h-yhat.shape[2]) // 2
+        y_sub = y[:,:,pad:-pad,pad:-pad]
+        loss = self.cross_entropy(yhat, y_sub)
 
         # minimize loss and update weights 
         self.optimizer.zero_grad()
@@ -67,7 +71,7 @@ class CNNTrainer(nn.Module):
             self.tfwriter.add_scalar("loss/cross_entropy", loss, global_step=self.global_step)
 
             grid_inputs = torchvision.utils.make_grid(x[:4,[1,2,0]])
-            grid_labels = torchvision.utils.make_grid(y[:4])
+            grid_labels = torchvision.utils.make_grid(y[:4,:,pad:-pad,pad:-pad])
             grid_predictions = torchvision.utils.make_grid(yhat[:4])
 
             self.tfwriter.add_image("inputs", normalize_image(grid_inputs), global_step=self.global_step)
@@ -75,8 +79,8 @@ class CNNTrainer(nn.Module):
             self.tfwriter.add_image("predictions", grid_predictions, global_step=self.global_step)
 
             prediction = yhat > 0.5
-            correct = torch.sum(prediction == y)
-            acc = correct.float() / y.numel()
+            correct = torch.sum(prediction == y_sub)
+            acc = correct.float() / y_sub.numel()
             self.tfwriter.add_scalar("accuracy", acc, global_step=self.global_step)
 
             for c in range(0, x.shape[1]):
@@ -103,12 +107,12 @@ class CNNTrainer(nn.Module):
 
 def train(model_path=model_path,
           data_path=data_path,
-          total_steps=10000,
+          total_steps=20000,
           batch_size=32,
           lr=1e-3,
           hidden=16,
           log_step=100,
-          save_step=100):
+          save_step=1000):
 
     training_params = dict(batch_size=batch_size,
                            lr=lr, model_path=model_path, hidden=hidden)
@@ -122,7 +126,8 @@ def train(model_path=model_path,
     trainer.load_checkpoint()
 
     # load wildfire iterator
-    wildfires = dataloader.WildfireThreshold(data_path)
+    #wildfires = dataloader.WildfireThreshold(data_path)
+    wildfires = dataloader.get_wildfire_dataset(data_path)
     data_params = {'batch_size': batch_size, 'shuffle': True,
                    'num_workers': 20, 'pin_memory': True}
     training_generator = data.DataLoader(wildfires, **data_params)
