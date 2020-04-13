@@ -20,5 +20,10 @@ setup(
     tests_require=open("requirements-dev.in").readlines(),
     description="Modelling characteristics of wildfires",
     long_description="\n" + open("README.md").read(),
-    scripts=["bin/download_satellite_data", "bin/label_wildfires"],
+    entry_points={
+        "console_scripts": [
+            "label=wildfire.cli.label:label",
+            "download=wildfire.cli.download:download",
+        ]
+    },
 )

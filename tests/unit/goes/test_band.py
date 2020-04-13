@@ -60,12 +60,12 @@ def test_filter_bad_pixels(emissive_band):
     )
 
 
-def test_rescale_to_500m(reflective_band, emissive_band):
-    actual = goes.GoesBand(dataset=reflective_band).rescale_to_500m()
+def test_rescale_to_2km(reflective_band, emissive_band):
+    actual = goes.GoesBand(dataset=reflective_band).rescale_to_2km()
     assert isinstance(actual, goes.GoesBand)
     assert actual.dataset.Rad.shape == (500, 500)
 
-    actual = goes.GoesBand(dataset=emissive_band).rescale_to_500m()
+    actual = goes.GoesBand(dataset=emissive_band).rescale_to_2km()
     assert isinstance(actual, goes.GoesBand)
     assert actual.dataset.Rad.shape == (500, 500)
 

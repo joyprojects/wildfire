@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euxo pipefail
+# -e exit on first error
+# -u exit if variable is not set
+# -x print each command run to stdout
+# -o pipefail return the error status of the last command to exit
+
+pip install -r requirements.txt
+pip install -r requirements-dev.in
+conda install mpi4py -y
+python setup.py install

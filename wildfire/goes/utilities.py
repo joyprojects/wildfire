@@ -271,7 +271,7 @@ def map_function(function, function_args, flatten=False):
     pool.join()
 
     if flatten:
-        return _flatten(worker_results)
+        return flatten(worker_results)
     return worker_results
 
 
@@ -313,9 +313,8 @@ def imap_function(function, function_args, flatten=False):
     )
     pool.close()
     pool.join()
-
-    if flatten:
-        return _flatten(worker_results)
+    if flatten and worker_results:
+        return flatten_array(worker_results)
     return worker_results
 
 
@@ -357,9 +356,9 @@ def starmap_function(function, function_args, flatten=False):
     pool.join()
 
     if flatten:
-        return _flatten(worker_results)
+        return flatten_array(worker_results)
     return worker_results
 
 
-def _flatten(list_2d):
+def flatten_array(list_2d):
     return [item for list_1d in list_2d for item in list_1d]

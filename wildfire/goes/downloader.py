@@ -146,21 +146,36 @@ def download_files(local_directory, satellite, region, start_time, end_time=None
     s3_filepaths = list_s3_files(
         satellite=satellite, region=region, start_time=start_time, end_time=end_time
     )
+    already_local_filepaths = utilities.list_local_files(
+        local_directory=local_directory,
+        satellite=satellite,
+        region=region,
+        start_time=start_time,
+        end_time=end_time
+    )
+
+    filepath_mapping = {  # local -> s3 filepath
+        s3_filepath_to_local(s3_filepath, local_directory=local_directory): s3_filepath
+        for s3_filepath in s3_filepaths
+    }
+    to_download = set(filepath_mapping.keys()) - set(already_local_filepaths)
 
     _logger.info(
-        "Downloading %d files using %d workers...", len(s3_filepaths), os.cpu_count()
+        "Downloading %d files using %d workers...", len(to_download), os.cpu_count(),
     )
-    local_filepaths = utilities.imap_function(
+    downloaded_filepaths = utilities.imap_function(
         function=_download_file_mp,
         function_args=[
             DownloadFileArgs(
-                s3_filepath=s3_filepath, local_directory=local_directory, s3_filesystem=s3
+                s3_filepath=filepath_mapping[filepath],
+                local_directory=local_directory,
+                s3_filesystem=s3,
             )
-            for s3_filepath in s3_filepaths
+            for filepath in to_download
         ],
     )
     _logger.info(
         "Downloaded %.5f GB of satellite data.",
-        sum(os.path.getsize(f) for f in local_filepaths) / 1e9,
+        sum(os.path.getsize(f) for f in downloaded_filepaths) / 1e9,
     )
-    return local_filepaths
+    return list(filepath_mapping.keys())

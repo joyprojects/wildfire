@@ -4,3 +4,5 @@ build/
 dist/
 documentation/notebooks/temporary_output
 .coverage.*
+downloaded_data/
+labeled_data/

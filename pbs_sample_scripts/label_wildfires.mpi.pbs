@@ -1,0 +1,16 @@
+#PBS -S /bin/bash
+#PBS -l site=needed=/home4+/nobackupp2+/nobackupp10
+#PBS -l select=2:ncpus=16:model=san_gpu,walltime=8:00:00
+#PBS -j eo
+#PBS -m e
+#PBS -N scanning_wildfires
+#PBS -W group_list=s1007
+#PBS -q k40
+
+source ~/.bashrc
+module purge
+conda activate wildfire3.7
+
+mpirun -np 32 label goes-threshold 2019-10-01T01:00:00 2020-01-01T00:00:00
+
+conda deactivate

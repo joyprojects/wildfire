@@ -42,9 +42,9 @@ def test_scan_init_bad_args(all_bands_wildfire):
         assert "must have same" in error_message
 
 
-def test_rescale_to_500m(all_bands_wildfire):
+def test_rescale_to_2km(all_bands_wildfire):
     original = goes.GoesScan(bands=all_bands_wildfire)
-    actual = original.rescale_to_500m()
+    actual = original.rescale_to_2km()
     assert isinstance(actual, goes.GoesScan)
     assert actual.satellite == original.satellite
     assert actual.region == original.region

@@ -102,7 +102,7 @@ def get_model_features_goes(goes_scan):
     wildfire.threshold_model.model.ModelFeatures
         Namedtuple of features used as input to the `predict` method.
     """
-    rescaled_scan = goes_scan.rescale_to_500m()
+    rescaled_scan = goes_scan.rescale_to_2km()
 
     with np.errstate(invalid="ignore"):
         is_hot = model.is_hot_pixel(

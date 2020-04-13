@@ -8,9 +8,9 @@ geostationary satellite imagery.
 ## Contents
 
 - [Installation](#Installation)
-  - [Instructions](#Instructions)
   - [Requirements](#Requirements)
-- [bin/](#bin/)
+  - [Instructions](#Instructions)
+- [Entry Points](#Entry-Points/)
 - [documentation/](#documentation/)
 - [wildfire/goes/](#wildfire/goes/)
 - [wildfire/threshold_model/](#wildfire/threshold_model/)
@@ -30,42 +30,38 @@ an isolated python environment. Below are several usefule commands for doing so 
 - `source deactivate` to deactivate the python environment
 - `conda remove --name wildfire3.7 --all` to destroy the python environment (must deactivate first)
 
-### Instructions
-
-1. `cp .sample_env .env` and fill out any `<>` blocks
-1. `set -o allexport && source .env && set +o allexport` to export environment variables
-1. `pip install -r requirements.txt` to install dependencies
-1. `conda install mpi4py torch cudatoolkit`
-1. `pip install -r requirements-dev.in` to install test dependencies
-1. `scripts/test-it` to verify installation
-
 ### Requirements
+
+1. [Anaconda](https://docs.anaconda.com/anaconda/install/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+    1. some packages like `mpi4py`, `pytorch`, and `cudatoolkit` are much much much more easily installed using conda.
 
 1. To interact with S3 via [s3fs](https://s3fs.readthedocs.io/en/latest/)
 one either needs to have credentials stored at `~/.aws/credentials` (see
 [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file))
 or the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set.
 
-## bin/
+### Instructions
 
-There are currently two main entry scripts for this package, `bin/download_satellite_data`
-`bin/label_wildfires` which are meant to bulk download GOES satellite data, and label GOES
-satellite data with wildfires.
+1. Make sure that all requirements above are installed
+1. `cp .sample_env .env` and fill out any `<>` blocks
+1. `set -o allexport && source .env && set +o allexport` to export environment variables
+1. `scripts/install` to install package and dependencies
+1. `scripts/test-it` to verify install
 
-`bin/download_satellite_data noaa-goes17 M1 2019-01-01T01:00:00 2019-02-01T01:11:00 downloaded_data`
+## Entry Points
 
-- To download GOES data from the GOES-17 satellite over the mesoscale 1 region between Jan 1, 2019 01:00 AM and Feb 1, 2019 01:11 AM to the "downloaded_data/" directory
-
-`bin/label_wildfires noaa-goes17 M1 2019-01-01T01:00:00 2019-02-01T01:00:00 goes_data labeled_wildfires`
-
-- To label wildfires in GOES data from the GOES-17 satellite over the mesoscale 1 region between Jan 1, 2019 01:00 AM and Feb 1, 2019 01:00 AM found in the "goes_data/" directory and persist any wildfires found to the "labeled_wildfires" directory
-
-- (MPI) Fires can be labeled in parallel across multiple nodes on NAS. mpi4py is used to distribute scans across the number of nodes,`bin/label_wildfires.mpi.py`. This script is executed across several nodes and processed with a PBS job, `bin/label_wildfires.mpi.pbs`. Please review and edit selected queues, number of nodes/cpus, and mpi process size in `*.pbs` scripts. For job setup see [https://www.nas.nasa.gov/hecc/support/kb/121/]
+- `download goes-level-1 2019-01-01 2019-01-02`
+- `label goes-threshold 2019-01-01 2019-01-02`
 
 ## documentation/
 
 Various documentation around GOES satellite data, modelling, package usage, and working on
 NAS.
+
+## wildfire/cli/
+
+The command line interface for the library. Currently, this handles downloading and labeling wildfires
+in the GOES satellite data.
 
 ## wildfire/goes/
 
