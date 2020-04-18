@@ -10,13 +10,14 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     steps:
     - uses: actions/checkout@v1
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+    - name: Set up virtual environment
+      uses: goanpeca/setup-miniconda@v1
       with:
-        python-version: 3.7
-    - name: Install dependencies
-      run: scripts/install
+        environment-file: environment.yml
+        activate-environment: wildfire3.7
+        auto-activate-base: false
     - name: Linting, unit, and integration tests
+      shell: bash -l {0}
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

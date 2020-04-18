@@ -45,7 +45,11 @@ or the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set
 1. Make sure that all requirements above are installed
 1. `cp .sample_env .env` and fill out any `<>` blocks
 1. `set -o allexport && source .env && set +o allexport` to export environment variables
+<<<<<<< HEAD
+1. `source scripts/create-env` to install package and dependencies
+=======
 1. `scripts/install` to install package and dependencies
+>>>>>>> master
 1. `scripts/test-it` to verify install
 
 ## Entry Points
@@ -62,6 +66,10 @@ NAS.
 
 The command line interface for the library. Currently, this handles downloading and labeling wildfires
 in the GOES satellite data.
+
+- `download --help`
+- `predict --help`
+- `training-data --help`
 
 ## wildfire/goes/
 
@@ -93,3 +101,15 @@ If you are setting up your NAS environment for the first time please refer to
 [their documentation](https://www.nas.nasa.gov/hecc/support/kb/), or if you are looking
  for support please contact them for 24/7 service at 800-331-8737 or
  <support@nas.nasa.gov>.
+
+## TODO
+
+- Work on test coverage
+- Make notebooks work
+- Run training data on NAS
+- Clean L2 documentation notebook
+- Add in DNN
+- Run DNN training on NAS
+- Make pylint and pydocstyle happy
+- Run DNN inference on NAS
+- Update all documentation

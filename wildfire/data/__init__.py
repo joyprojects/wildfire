@@ -1,0 +1,1 @@
+"""Subpackage for wildfire datasets."""

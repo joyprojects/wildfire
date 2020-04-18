@@ -5,8 +5,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from wildfire.goes import scan, utilities
-from wildfire.threshold_model import model
+from wildfire.data import goes_level_1
+from wildfire.models import threshold_model
 
 _logger = logging.getLogger(__name__)
 
@@ -33,12 +33,14 @@ def find_wildfires_goes(filepaths):
         complete scan.
     """
     _logger.info("Grouping files into scans...")
-    scan_filepaths = utilities.group_filepaths_into_scans(filepaths=filepaths)
+    scan_filepaths = goes_level_1.utilities.group_filepaths_into_scans(
+        filepaths=filepaths
+    )
 
     _logger.info(
         "Processing %d scans with %d workers...", len(scan_filepaths), os.cpu_count()
     )
-    wildfires = utilities.imap_function(
+    wildfires = goes_level_1.utilities.imap_function(
         function=parse_scan_for_wildfire, function_args=scan_filepaths
     )
     wildfires = list(filter(None, wildfires))
@@ -68,7 +70,7 @@ def parse_scan_for_wildfire(filepaths):
         complete scan.
     """
     try:
-        goes_scan = scan.read_netcdfs(local_filepaths=filepaths)
+        goes_scan = goes_level_1.scan.read_netcdfs(local_filepaths=filepaths)
     except ValueError as error_message:
         _logger.warning(
             "\nSkipping malformed goes_scan comprised of %s.\nError: %s",
@@ -94,18 +96,18 @@ def get_model_features_goes(goes_scan):
 
     Parameters
     ----------
-    goes_scan : wildfire.goes.scan.GoesScan
+    goes_scan : wildfire.data.goes_level_1.GoesScan
         A scan of 16 bands of light over some region on Earth.
 
     Returns
     -------
-    wildfire.threshold_model.model.ModelFeatures
+    wildfire.models.threshold_model.ModelFeatures
         Namedtuple of features used as input to the `predict` method.
     """
     rescaled_scan = goes_scan.rescale_to_2km()
 
     with np.errstate(invalid="ignore"):
-        is_hot = model.is_hot_pixel(
+        is_hot = threshold_model.is_hot_pixel(
             brightness_temperature_3_89=rescaled_scan[
                 "band_7"
             ].brightness_temperature.data,
@@ -113,21 +115,21 @@ def get_model_features_goes(goes_scan):
                 "band_14"
             ].brightness_temperature.data,
         )
-        is_night = model.is_night_pixel(
+        is_night = threshold_model.is_night_pixel(
             reflectance_factor_0_64=rescaled_scan["band_2"].reflectance_factor.data,
             reflectance_factor_0_87=rescaled_scan["band_3"].reflectance_factor.data,
         )
-        is_water = model.is_water_pixel(
+        is_water = threshold_model.is_water_pixel(
             reflectance_factor_2_25=rescaled_scan["band_6"].reflectance_factor.data
         )
-        is_cloud = model.is_cloud_pixel(
+        is_cloud = threshold_model.is_cloud_pixel(
             reflectance_factor_0_64=rescaled_scan["band_2"].reflectance_factor.data,
             reflectance_factor_0_87=rescaled_scan["band_3"].reflectance_factor.data,
             brightness_temperature_12_27=rescaled_scan[
                 "band_15"
             ].brightness_temperature.data,
         )
-    return model.ModelFeatures(
+    return threshold_model.ModelFeatures(
         is_hot=is_hot, is_night=is_night, is_water=is_water, is_cloud=is_cloud,
     )
 
@@ -137,7 +139,7 @@ def predict_wildfires_goes(goes_scan):
 
     Parameters
     ----------
-    goes_scan : wildfire.goes.scan.GoesScan
+    goes_scan : wildfire.data.goes_level_1.GoesScan
 
     Returns
     -------
@@ -145,7 +147,7 @@ def predict_wildfires_goes(goes_scan):
         A prediction (True/False) of whether a wildfire is detected at each pixel.
     """
     model_features = get_model_features_goes(goes_scan=goes_scan)
-    model_predictions = model.predict(
+    model_predictions = threshold_model.predict(
         is_hot=model_features.is_hot,
         is_cloud=model_features.is_cloud,
         is_night=model_features.is_night,
@@ -159,7 +161,7 @@ def plot_wildfires_goes(goes_scan):
 
     Parameters
     ----------
-    goes_scan : wildfire.goes.scan.GoesScan
+    goes_scan : wildfire.data.goes_level_1.GoesScan
 
     Returns
     -------

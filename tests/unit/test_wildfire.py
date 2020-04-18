@@ -3,7 +3,9 @@ import os
 
 import numpy as np
 
-from wildfire import goes, threshold_model, wildfire
+from wildfire import wildfire
+from wildfire.data import goes_level_1
+from wildfire.models import threshold_model
 
 
 def test_find_wildfires_goes(wildfire_scan_filepaths, no_wildfire_scan_filepaths):
@@ -30,7 +32,7 @@ def test_parse_scan_for_wildfire_bad_scan(wildfire_scan_filepaths):
 
 
 def test_get_model_features_goes(all_bands_wildfire):
-    goes_scan = goes.GoesScan(bands=all_bands_wildfire)
+    goes_scan = goes_level_1.GoesScan(bands=all_bands_wildfire)
     actual = wildfire.get_model_features_goes(goes_scan=goes_scan)
     assert isinstance(actual, threshold_model.model.ModelFeatures)
 
@@ -40,7 +42,7 @@ def test_get_model_features_goes(all_bands_wildfire):
 
 
 def test_predict_wildfires_goes(all_bands_wildfire):
-    goes_scan = goes.GoesScan(bands=all_bands_wildfire)
+    goes_scan = goes_level_1.GoesScan(bands=all_bands_wildfire)
     actual = wildfire.predict_wildfires_goes(goes_scan=goes_scan)
     assert isinstance(actual, np.ndarray)
     assert actual.shape == (500, 500)

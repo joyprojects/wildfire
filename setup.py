@@ -16,14 +16,13 @@ setup(
     author_email="",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=open("requirements.in").readlines(),
-    tests_require=open("requirements-dev.in").readlines(),
     description="Modelling characteristics of wildfires",
     long_description="\n" + open("README.md").read(),
     entry_points={
         "console_scripts": [
-            "label=wildfire.cli.label:label",
+            "predict=wildfire.cli.predict:predict",
             "download=wildfire.cli.download:download",
+            "training-data=wildfire.cli.training_data:training_data",
         ]
     },
 )
