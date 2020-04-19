@@ -1,6 +1,6 @@
 """Create training datasets.
 
-Uses mpi4py so that it can also be distributed across compute nodes.
+Uses `ray` so that it can also be distributed across compute nodes.
 """
 import logging
 
@@ -34,7 +34,7 @@ def goes_l2_cnn(
 ):
     """Create GOES level 2 training data for the DNN.
 
-    Usage: `mpirun -np 32 training-data goes-l2-cnn ./level_1_directory ./level_2_directory`
+    Usage: `training-data goes-l2-cnn ./level_1_directory ./level_2_directory`
     """
     _logger.info("Creating training data from GOES level 2 wildfire data...")
     dnn.training_data.create_goes_level_2_training_data(

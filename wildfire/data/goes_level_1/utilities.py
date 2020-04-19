@@ -6,7 +6,8 @@ import os
 import re
 
 import numpy as np
-import ray
+
+from wildfire.multiprocessing import map_function
 
 SATELLITE_SHORT_HAND = {"noaa-goes16": "G16", "noaa-goes17": "G17"}
 SATELLITE_LONG_HAND = {"G16": "noaa-goes16", "G17": "noaa-goes17"}
@@ -20,9 +21,6 @@ BASE_PATTERN_FORMAT = os.path.join(
 )
 
 _logger = logging.getLogger(__name__)
-
-ray.init(ignore_reinit_error=True)
-
 
 def group_filepaths_into_scans(filepaths):
     """Group bands in `filepaths` that belong to the same scan.
@@ -234,45 +232,3 @@ def parse_filename(filename):
     started_at = datetime.datetime.strptime(started_at, "%Y%j%H%M%S%f")
     channel = int(channel)
     return region, channel, satellite, started_at
-
-
-def map_function(function, function_args):
-    """Map function arguments across function in parallel.
-
-    Uses the number of cores available on the machine as the number of workers. Uses
-    multiprocessing's `imap` in order to log a progress bar over its progress.
-
-    https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool.imap
-
-    User should read documentation on `multiprocessing.Pool` before using this method.
-    https://docs.python.org/3.7/library/multiprocessing.html
-
-    Parameters
-    ----------
-    function : function
-        Function to pool across multiple threads.
-    function_args : list of Any
-        Arguments to iteratively pass to `function` across multiple threads. All elements
-        must be pickleable. Only supports one iterable argument.
-
-    Returns
-    -------
-    list of Any
-        A list over the return values of `function` across the number of threads.
-        Length is equal to `len(function_args)`.
-    """
-    _logger.info("Using %s workers to run %s...", os.cpu_count(), function.__name__)
-
-    remote_function = ray.remote(function)
-    futures = [remote_function.remote(arg) for arg in function_args]
-    return flatten_array(ray.get(futures))
-
-
-def flatten_array(list_2d):
-    """Flatten 2d list to 1 dimension."""
-    shape = np.array(list_2d).shape
-    if len(shape) == 2:
-        return [item for list_1d in list_2d for item in list_1d]
-    if len(shape) == 1:
-        return list_2d
-    raise ValueError(f"Expected shape to be (2, *). Found {shape}")

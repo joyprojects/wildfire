@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from wildfire import multiprocessing
 from wildfire.data import goes_level_1
 from wildfire.models import threshold_model
 
@@ -40,8 +41,8 @@ def find_wildfires_goes(filepaths):
     _logger.info(
         "Processing %d scans with %d workers...", len(scan_filepaths), os.cpu_count()
     )
-    wildfires = goes_level_1.utilities.map_function(
-        function=parse_scan_for_wildfire, function_args=scan_filepaths
+    wildfires = multiprocessing.map_function(
+        function=parse_scan_for_wildfire, function_args=[scan_filepaths]
     )
     wildfires = list(filter(None, wildfires))
 

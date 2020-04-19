@@ -1,12 +1,13 @@
 """Create and load data to be used by the CNNs."""
+import datetime
 import glob
 import logging
 import os
 
-from mpi4py import MPI
 import numpy as np
 import xarray as xr
 
+from wildfire import multiprocessing
 from wildfire.data import goes_level_2
 
 _logger = logging.getLogger(__name__)
@@ -128,44 +129,32 @@ def create_goes_level_2_training_data(
     width : int
     stride : int
     """
-    comm = MPI.COMM_WORLD
-    process_rank = comm.Get_rank()
-    num_processes = comm.Get_size()
+    goes_l2_filepaths = glob.glob(
+        os.path.join(level_2_directory, "**", "*.nc"), recursive=True
+    )
+    _logger.info(
+        "Creating training data from %d file for the DNN using %d processes...",
+        len(goes_l2_filepaths),
+        os.cpu_count(),
+    )
 
-    goes_l2_filepaths = None
-
-    if process_rank == 0:
-        goes_l2_filepaths = glob.glob(
-            os.path.join(level_2_directory, "**", "*.nc"), recursive=True
-        )
-        _logger.info(
-            "Creating training data from %d for the DNN using %d processes...",
-            len(goes_l2_filepaths),
-            num_processes,
-        )
-        goes_l2_filepaths = np.array_split(
-            goes_l2_filepaths, indices_or_sections=num_processes
-        )
-
-    goes_l2_filepaths = comm.scatter(goes_l2_filepaths)
-    training_data = [
-        process_file(
-            level_2_filepath=level_2_filepath,
-            level_1_directory=level_1_directory,
-            height=height,
-            width=width,
-            stride=stride,
-        )
-        for level_2_filepath in goes_l2_filepaths
-    ]
+    training_data = multiprocessing.map_function(
+        function=process_file,
+        function_args=[
+            [level_2_filepath, level_1_directory, height, width, stride]
+            for level_2_filepath in goes_l2_filepaths
+        ],
+    )
     training_data = np.concatenate(training_data)
+
     inputs = training_data[:, :, :, :-1].astype(np.float32)
     labels = training_data[:, :, :, -1].astype(np.float32)
 
-    persist_filepath = os.path.join(persist_directory, "%03i.nc" % process_rank)
+    persist_filepath = os.path.join(
+        persist_directory,
+        f"level_2_training_data_c{datetime.datetime.utcnow():%Y%m%d%H%M%S}.nc",
+    )
     xr.Dataset(
         {"abi": xr.DataArray(inputs), "fire_temp": xr.DataArray(labels)}
     ).to_netcdf(persist_filepath)
-    _logger.info(
-        "Rank: %d -- Saved training data to file: %s", process_rank, persist_filepath
-    )
+    _logger.info("Saved training data to file: %s", persist_filepath)

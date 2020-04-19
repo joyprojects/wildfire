@@ -1,13 +1,10 @@
 """Download wildfire data."""
 import logging
 import os
-import subprocess
 
 import click
-from mpi4py import MPI
-import numpy as np
 
-from wildfire.data.goes_level_1 import downloader
+from wildfire.data import goes_level_1 as gl1, goes_level_2 as gl2
 
 DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
 
@@ -60,7 +57,7 @@ def goes_level_1(start, end, satellite, region, persist_directory):
         start,
         end,
     )
-    downloader.download_files(
+    gl1.downloader.download_files(
         local_directory=persist_directory,
         satellite=satellite,
         region=region,
@@ -97,51 +94,36 @@ def goes_level_2(
 ):
     """Download GOES level 2 fire data.
 
-    Usage: `mpirun -np 32 download goes-level-2 2020 001 010`
+    Usage: `download goes-level-2 2020 001 010`
     """
-    comm = MPI.COMM_WORLD
-    process_rank = comm.Get_rank()
-    num_processes = comm.Get_size()
+    _logger.info(
+        """Downloading available GOES satellite data. Parameters:
+    Satellite: %s
+    Product: %s
+    Year: %s
+    Day of Year Start: %s
+    Day of Year End: %s
+    Persist Directory: %s
+    Num Processes: %s""",
+        satellite,
+        product,
+        year,
+        day_of_year_min,
+        day_of_year_max,
+        persist_directory,
+        os.cpu_count(),
+    )
 
-    days = None
-    if process_rank == 0:
-        _logger.info(
-            """Downloading available GOES satellite data. Parameters:
-        Satellite: %s
-        Product: %s
-        Year: %s
-        Day of Year Start: %s
-        Day of Year End: %s
-        Persist Directory: %s
-        Num Processes: %s""",
-            satellite,
-            product,
-            year,
-            day_of_year_min,
-            day_of_year_max,
-            persist_directory,
-            num_processes,
-        )
-        days = list(range(day_of_year_min, day_of_year_max + 1))
-        days = np.array_split(days, indices_or_sections=num_processes)
-
-    days = comm.scatter(days)
-    for day_of_year in days:
-        day_of_year = f"{day_of_year:03d}"
-        year = str(year)
-
-        _logger.info("Downloading fire data for %s-%s...", year, day_of_year)
-        subprocess.check_call(
-            [
-                "aws",
-                "s3",
-                "cp",
-                f"s3://{satellite}/{product}/{year}/{day_of_year}/",
-                os.path.join(persist_directory, satellite, product, year, day_of_year),
-                "--recursive",
-            ]
-        )
-    _logger.info("Rank %s completed.", process_rank)
+    days = list(range(day_of_year_min, day_of_year_max + 1))
+    filepaths = gl2.downloader.download_batch(
+        year=year,
+        days=days,
+        satellite=satellite,
+        product=product,
+        persist_directory=persist_directory,
+    )
+    _logger.info("Downloaded %d files to %s", len(filepaths), persist_directory)
+    _logger.info("Job completed.")
 
 
 @download.command()

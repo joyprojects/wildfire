@@ -1,10 +1,5 @@
 import datetime
-import glob
-import multiprocessing
 import os
-import time
-
-import numpy as np
 
 from wildfire.data.goes_level_1 import utilities
 
@@ -109,8 +104,3 @@ def test_list_local_files(l1_wildfire_scan_filepaths):
         end_time=datetime.datetime(2019, 10, 27, 20, 1),
     )
     assert not set(actual) - set(l1_wildfire_scan_filepaths)
-
-
-def test_flatten_array():
-    actual = utilities.flatten_array([[1], [2], [3], [4]])
-    np.testing.assert_array_equal(actual, np.array([1, 2, 3, 4]))

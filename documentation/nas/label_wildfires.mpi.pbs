@@ -13,7 +13,7 @@ module purge
 conda activate wildfire3.7
 
 # command to run
-mpirun -np 32 label goes-threshold 2019-10-01T01:00:00 2020-01-01T00:00:00
+label goes-threshold 2019-10-01T01:00:00 2020-01-01T00:00:00
 
 # tear down
 conda deactivate

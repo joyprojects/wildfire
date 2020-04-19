@@ -33,7 +33,7 @@ an isolated python environment. Below are several usefule commands for doing so 
 ### Requirements
 
 1. [Anaconda](https://docs.anaconda.com/anaconda/install/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
-    1. some packages like `mpi4py`, `pytorch`, and `cudatoolkit` are much much much more easily installed using conda.
+    1. some packages like `pytorch`, and `cudatoolkit` are much much much more easily installed using conda.
 
 1. To interact with S3 via [s3fs](https://s3fs.readthedocs.io/en/latest/)
 one either needs to have credentials stored at `~/.aws/credentials` (see
@@ -45,17 +45,14 @@ or the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` set
 1. Make sure that all requirements above are installed
 1. `cp .sample_env .env` and fill out any `<>` blocks
 1. `set -o allexport && source .env && set +o allexport` to export environment variables
-<<<<<<< HEAD
-1. `source scripts/create-env` to install package and dependencies
-=======
 1. `scripts/install` to install package and dependencies
->>>>>>> master
 1. `scripts/test-it` to verify install
 
 ## Entry Points
 
 - `download goes-level-1 2019-01-01 2019-01-02`
 - `label goes-threshold 2019-01-01 2019-01-02`
+- `training-data goes-l2-cnn /level_1_directory ./level_2_directory`
 
 ## documentation/
 
@@ -104,9 +101,7 @@ If you are setting up your NAS environment for the first time please refer to
 
 ## TODO
 
-- Think about using ray instead of mpi4py
 - Run training data on NAS
-- Clean L2 documentation notebook
 - Add in DNN
 - Run DNN training on NAS
 - Make pylint and pydocstyle happy

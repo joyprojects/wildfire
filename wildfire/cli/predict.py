@@ -1,6 +1,6 @@
 """Create model predictions.
 
-This module uses mpi4py so that it can also be distributed across compute nodes.
+This module uses `ray` so that it can also be distributed across compute nodes.
 """
 import datetime
 import json
@@ -8,10 +8,8 @@ import logging
 import os
 
 import click
-from mpi4py import MPI
-import numpy as np
 
-from wildfire import wildfire
+from wildfire import multiprocessing, wildfire
 from wildfire.data import goes_level_1
 
 DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
@@ -60,90 +58,75 @@ def goes_threshold(
 ):
     """Label wildfires in GOES Level 1b data.
 
-    Usage: `mpirun -np 32 predict goes-threshold 2019-01-01 2019-01-02`
+    Usage: `predict goes-threshold 2019-01-01 2019-01-02`
     """
-    comm = MPI.COMM_WORLD
-    process_rank = comm.Get_rank()
-    num_processes = comm.Get_size()
-
-    scan_filepaths = None
-
-    if process_rank == 0:
-        if download:
-            filepaths = goes_level_1.downloader.download_files(
-                local_directory=goes_directory,
-                satellite=satellite,
-                region=region,
-                start_time=start,
-                end_time=end,
-            )
-        else:
-            filepaths = goes_level_1.utilities.list_local_files(
-                local_directory=goes_directory,
-                satellite=satellite,
-                region=region,
-                start_time=start,
-                end_time=end,
-            )
-            if not filepaths:
-                _logger.error("No local files found...")
-                comm.Abort()
-
-        scan_filepaths = goes_level_1.utilities.group_filepaths_into_scans(
-            filepaths=filepaths
+    if download:
+        filepaths = goes_level_1.downloader.download_files(
+            local_directory=goes_directory,
+            satellite=satellite,
+            region=region,
+            start_time=start,
+            end_time=end,
         )
-        _logger.info(
-            """Labeling wildfires from GOES data with the threshold model.
-Parameters:
-        Satellite: %s
-        Region: %s
-        Start Time: %s
-        End Time: %s
-        GOES Directory: %s
-        Persist Directory: %s
-        Num Processes: %s,
-        Num Scans: %s""",
-            satellite,
-            region,
-            start,
-            end,
-            goes_directory,
-            wildfire_directory,
-            num_processes,
-            len(scan_filepaths),
+    else:
+        filepaths = goes_level_1.utilities.list_local_files(
+            local_directory=goes_directory,
+            satellite=satellite,
+            region=region,
+            start_time=start,
+            end_time=end,
         )
-        scan_filepaths = np.array_split(scan_filepaths, indices_or_sections=num_processes)
+        if not filepaths:
+            raise ValueError("No local files found...")
 
-    scan_filepaths = comm.scatter(scan_filepaths)
-    wildfires = [
-        wildfire.parse_scan_for_wildfire(scan_filepath)
-        for scan_filepath in scan_filepaths
-    ]
+    scan_filepaths = goes_level_1.utilities.group_filepaths_into_scans(
+        filepaths=filepaths
+    )
+    _logger.info(
+        """Labeling wildfires from GOES data with the threshold model.
+    Satellite: %s
+    Region: %s
+    Start Time: %s
+    End Time: %s
+    GOES Directory: %s
+    Persist Directory: %s
+    Num Processes: %s,
+    Num Scans: %s""",
+        satellite,
+        region,
+        start,
+        end,
+        goes_directory,
+        wildfire_directory,
+        os.cpu_count(),
+        len(scan_filepaths),
+    )
+
+    wildfires = multiprocessing.map_function(
+        function=wildfire.parse_scan_for_wildfire, function_args=[scan_filepaths]
+    )
     wildfires = list(filter(None, wildfires))
     _logger.info("Found %d wildfires.", len(wildfires))
 
-    wildfires = comm.gather(wildfires)
+    wildfires = multiprocessing.flatten_array(wildfires)
+    if len(wildfires) > 0:
+        wildfires_filepath = os.path.join(
+            wildfire_directory,
+            WILDFIRE_FILENAME.format(
+                satellite=satellite,
+                region=region,
+                start=start.strftime(DATETIME_FORMATS[0]),
+                end=end.strftime(DATETIME_FORMATS[0]),
+                created=datetime.datetime.utcnow().strftime(DATETIME_FORMATS[0]),
+            ),
+        )
+        _logger.info("Persisting wildfires to %s", wildfires_filepath)
+        with open(wildfires_filepath, "w+") as buffer:
+            json.dump(dict(enumerate(wildfires)), buffer)
+    else:
+        _logger.info("No wildfires found...")
 
-    if process_rank == 0:
-        wildfires = goes_level_1.utilities.flatten_array(wildfires)
-        if len(wildfires) > 0:
-            wildfires_filepath = os.path.join(
-                wildfire_directory,
-                WILDFIRE_FILENAME.format(
-                    satellite=satellite,
-                    region=region,
-                    start=start.strftime(DATETIME_FORMATS[0]),
-                    end=end.strftime(DATETIME_FORMATS[0]),
-                    created=datetime.datetime.utcnow().strftime(DATETIME_FORMATS[0]),
-                ),
-            )
-            _logger.info("Persisting wildfires to %s", wildfires_filepath)
-            with open(wildfires_filepath, "w+") as buffer:
-                json.dump(dict(enumerate(wildfires)), buffer)
-        else:
-            _logger.info("No wildfires found...")
-
-        _logger.info("Success.")
+    _logger.info("Success.")
 
 
 @predict.command
