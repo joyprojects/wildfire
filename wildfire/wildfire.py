@@ -40,7 +40,7 @@ def find_wildfires_goes(filepaths):
     _logger.info(
         "Processing %d scans with %d workers...", len(scan_filepaths), os.cpu_count()
     )
-    wildfires = goes_level_1.utilities.imap_function(
+    wildfires = goes_level_1.utilities.map_function(
         function=parse_scan_for_wildfire, function_args=scan_filepaths
     )
     wildfires = list(filter(None, wildfires))

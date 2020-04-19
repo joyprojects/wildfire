@@ -71,9 +71,9 @@ def goes_level_1(start, end, satellite, region, persist_directory):
 
 
 @download.command()
-@click.argument("year")
-@click.argument("day_of_year_min")
-@click.argument("day_of_year_max")
+@click.argument("year", type=click.INT)
+@click.argument("day_of_year_min", type=click.INT)
+@click.argument("day_of_year_max", type=click.INT)
 @click.option(
     "--satellite",
     default="noaa-goes16",
@@ -127,6 +127,9 @@ def goes_level_2(
 
     days = comm.scatter(days)
     for day_of_year in days:
+        day_of_year = f"{day_of_year:03d}"
+        year = str(year)
+
         _logger.info("Downloading fire data for %s-%s...", year, day_of_year)
         subprocess.check_call(
             [

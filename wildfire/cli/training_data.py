@@ -34,9 +34,10 @@ def goes_l2_cnn(
 ):
     """Create GOES level 2 training data for the DNN.
 
-    Usage: `mpirun -np 32 training_data goes_l2_cnn ./level_1_directory ./level_2_directory`
+    Usage: `mpirun -np 32 training-data goes-l2-cnn ./level_1_directory ./level_2_directory`
     """
-    dnn.data_loader.create_goes_level_2_training_data(
+    _logger.info("Creating training data from GOES level 2 wildfire data...")
+    dnn.training_data.create_goes_level_2_training_data(
         level_2_directory=level_2_directory,
         level_1_directory=level_1_directory,
         persist_directory=persist_directory,

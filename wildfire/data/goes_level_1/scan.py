@@ -1,5 +1,4 @@
 """Wrapper around the 16 bands of a GOES satellite scan."""
-import datetime
 import math
 
 import matplotlib.pyplot as plt
@@ -33,7 +32,7 @@ def get_goes_scan(satellite, region, scan_time_utc, local_directory, s3=True):
         local_directory=local_directory,
         satellite=satellite,
         region=region,
-        start_time=scan_time_utc + datetime.timedelta(),
+        start_time=scan_time_utc,
     )
 
     if len(local_filepaths) == 16:
@@ -123,6 +122,16 @@ class GoesScan:
             f"GoesScan(satellite={self.satellite}, region={self.region}, "
             f"scan_time={self.scan_time_utc:%Y-%m-%dT%H:%M:%S})"
         )
+
+    def __eq__(self, other):
+        """Overrides default implementation."""
+        if isinstance(other, GoesScan):
+            return (
+                (self.satellite == other.satellite)
+                & (self.scan_time_utc == other.scan_time_utc)
+                & (self.region == other.region)
+            )
+        return False
 
     def __getitem__(self, key):
         """Get the GoesBand at a specific band in the scan.

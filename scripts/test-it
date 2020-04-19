@@ -5,8 +5,6 @@ set -euxo pipefail
 # -x print each command run to stdout
 # -o pipefail return the error status of the last command to exit
 
-python setup.py install
-
 echo "Checking code style with pylint..."
 python3 -m pylint wildfire
 echo "Success!"

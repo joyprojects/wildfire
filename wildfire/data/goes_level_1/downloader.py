@@ -58,7 +58,10 @@ def list_s3_files(satellite, region, start_time, end_time=None, channel=None):
         s3=True,
     )
     _logger.info("Listing files in S3 using glob patterns: %s", glob_patterns)
-    filepaths = utilities.imap_function(s3.glob, glob_patterns, flatten=True)
+    filepaths = utilities.map_function(
+        lambda x: s3.glob(x),   # pylint: disable=unnecessary-lambda
+        glob_patterns
+    )
     if end_time is None:
         return filepaths
     return utilities.filter_filepaths(
@@ -99,7 +102,7 @@ def download_file(s3_filepath, local_directory, s3_filesystem=None):
 def _download_file_mp(args):
     """Download file to disk.
 
-    Meant to be used in parallel by `utilities.imap_function()`
+    Meant to be used in parallel by `utilities.map_function()`
 
     Local filepath will be of the form:
         {local_direcory}/{s3_key}
@@ -151,7 +154,7 @@ def download_files(local_directory, satellite, region, start_time, end_time=None
         satellite=satellite,
         region=region,
         start_time=start_time,
-        end_time=end_time
+        end_time=end_time,
     )
 
     filepath_mapping = {  # local -> s3 filepath
@@ -163,7 +166,7 @@ def download_files(local_directory, satellite, region, start_time, end_time=None
     _logger.info(
         "Downloading %d files using %d workers...", len(to_download), os.cpu_count(),
     )
-    downloaded_filepaths = utilities.imap_function(
+    downloaded_filepaths = utilities.map_function(
         function=_download_file_mp,
         function_args=[
             DownloadFileArgs(

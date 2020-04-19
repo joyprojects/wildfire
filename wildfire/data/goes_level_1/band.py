@@ -37,7 +37,6 @@ def get_goes_band(satellite, region, channel, scan_time_utc, local_directory, s3
         start_time=scan_time_utc,
         channel=channel,
     )
-
     if len(local_filepaths) == 1:
         return read_netcdf(local_filepath=local_filepaths[0])
 
@@ -204,7 +203,11 @@ class GoesBand:
         GoesBand
             A `GoesBand` object where each band has been rescaled to 500 meters.
         """
-        if self.dataset.Rad.shape == (1500, 2500):  # if already at 2km resolution
+        if self.dataset.Rad.shape in (
+            (500, 500),  # 2km resolution at Mesoscale
+            (5424, 5424),  # 2km resolution at Full
+            (1500, 2500),  # 2km resolution at CONUS
+        ):  # if already at 2km resolution
             rescaled_data = self.dataset
         elif self.band_id in (1, 3, 5):
             rescaled_data = self.dataset.thin(2)  # 500m -> 2km

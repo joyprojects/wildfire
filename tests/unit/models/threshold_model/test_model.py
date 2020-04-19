@@ -6,8 +6,8 @@ from wildfire.data import goes_level_1
 from wildfire.models import threshold_model
 
 
-def test_predict_wildfire(all_bands_wildfire):
-    wildfire_scan = goes_level_1.GoesScan(bands=all_bands_wildfire)
+def test_predict_wildfire(l1_all_bands_wildfire):
+    wildfire_scan = goes_level_1.GoesScan(bands=l1_all_bands_wildfire)
     model_features = wildfire.get_model_features_goes(goes_scan=wildfire_scan)
     actual_wildfire = threshold_model.predict(
         is_hot=model_features.is_hot,
@@ -18,8 +18,8 @@ def test_predict_wildfire(all_bands_wildfire):
     assert actual_wildfire.mean() > 0
 
 
-def test_predict_no_wildfire(all_bands_no_wildfire):
-    no_wildfire_scan = goes_level_1.GoesScan(bands=all_bands_no_wildfire)
+def test_predict_no_wildfire(l1_all_bands_no_wildfire):
+    no_wildfire_scan = goes_level_1.GoesScan(bands=l1_all_bands_no_wildfire)
     model_features = wildfire.get_model_features_goes(goes_scan=no_wildfire_scan)
     no_actual_wildfire = threshold_model.predict(
         is_hot=model_features.is_hot,
