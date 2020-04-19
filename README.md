@@ -104,8 +104,7 @@ If you are setting up your NAS environment for the first time please refer to
 
 ## TODO
 
-- Work on test coverage
-- Make notebooks work
+- Think about using ray instead of mpi4py
 - Run training data on NAS
 - Clean L2 documentation notebook
 - Add in DNN
