@@ -8,7 +8,7 @@ import ray
 _logger = logging.getLogger(__name__)
 
 
-def map_function(function, function_args):
+def map_function(function, function_args, flatten=True):
     """Map function arguments across function in parallel.
 
     Uses the number of cores available on the machine as the number of workers. Uses
@@ -26,6 +26,9 @@ def map_function(function, function_args):
     function_args : list of Any
         Arguments to iteratively pass to `function` across multiple threads. All elements
         must be pickleable. Only supports one iterable argument.
+    flatten : bool
+        Optional, defaults to True. Whether or not to flatten the output by a single
+        dimension before returning.
 
     Returns
     -------
@@ -48,14 +51,15 @@ def map_function(function, function_args):
 
     remote_function = ray.remote(function)
     futures = [remote_function.remote(*args) for args in function_args]
-    return flatten_array(ray.get(futures))
+    responses = ray.get(futures)
+    if flatten:
+        return flatten_array(responses)
+    return responses
 
 
-def flatten_array(list_2d):
-    """Flatten 2d array to 1 dimension."""
-    shape = np.array(list_2d).shape
+def flatten_array(arr):
+    """Flatten an array by 1 dimension."""
+    shape = np.array(arr).shape
     if len(shape) == 1:
-        return list_2d
-    if len(shape) == 2:
-        return [item for list_1d in list_2d for item in list_1d]
-    return list_2d
+        return arr
+    return [item for list_1d in arr for item in list_1d]

@@ -144,6 +144,7 @@ def create_goes_level_2_training_data(
             [level_2_filepath, level_1_directory, height, width, stride]
             for level_2_filepath in goes_l2_filepaths
         ],
+        flatten=False,
     )
     training_data = np.concatenate(training_data)
 
