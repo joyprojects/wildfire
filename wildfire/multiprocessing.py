@@ -37,7 +37,7 @@ def map_function(function, function_args, flatten=True):
         Length is equal to `len(function_args)`.
     """
     if not ray.is_initialized():
-        ray.init(ignore_reinit_error=True, webui_host="127.0.0.1")
+        ray.init(ignore_reinit_error=True, include_webui=False, num_cpus=os.cpu_count())
 
     if len(np.array(function_args).shape) == 1:
         function_args = np.expand_dims(function_args, axis=1).tolist()
