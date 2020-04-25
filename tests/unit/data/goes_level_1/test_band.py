@@ -92,7 +92,7 @@ def test_get_goes_band_local(l1_wildfire_scan_filepaths):
     )
 
     actual = goes_level_1.get_goes_band(
-        satellite="noaa-goes17",
+        satellite=goes_level_1.utilities.SATELLITE_LONG_HAND[satellite],
         region=region,
         channel=channel,
         scan_time_utc=scan_time,

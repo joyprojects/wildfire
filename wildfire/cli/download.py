@@ -42,21 +42,27 @@ def download():
 def goes_level_1(start, end, satellite, region, persist_directory):
     """Download GOES Level 1b data from Amazon S3.
 
+    Parallelize across locally available hardware, but not across multiple nodes (the
+    node instances used by the developers do not have access to the external internet).
+
     Usage: `download goes-level-1 2019-01-01 2019-02-01`
     """
     _logger.info(
         """Downloading available GOES satellite data. Parameters:
-    Satellite: %s
-    Regions: %s
-    Channels: %s
     Start Time: %s
-    End Time: %s""",
-        satellite,
-        region,
-        list(range(1, 17)),
+    End Time: %s
+    Satellite: %s
+    Region: %s
+    Persist Directory: %s
+    Num Processes: %s""",
         start,
         end,
+        satellite,
+        region,
+        persist_directory,
+        os.cpu_count(),
     )
+
     gl1.downloader.download_files(
         local_directory=persist_directory,
         satellite=satellite,
@@ -64,7 +70,7 @@ def goes_level_1(start, end, satellite, region, persist_directory):
         start_time=start,
         end_time=end,
     )
-    _logger.info("Success.")
+    _logger.info("Job completed.")
 
 
 @download.command()
@@ -90,39 +96,41 @@ def goes_level_1(start, end, satellite, region, persist_directory):
     help="Directory in which to look for or download GOES data.",
 )
 def goes_level_2(
-    year, day_of_year_min, day_of_year_max, satellite, product, persist_directory
+    year, day_of_year_min, day_of_year_max, satellite, product, persist_directory,
 ):
     """Download GOES level 2 fire data.
+
+    Parallelize across locally available hardware, but not across multiple nodes (the
+    node instances used by the developers do not have access to the external internet).
 
     Usage: `download goes-level-2 2020 001 010`
     """
     _logger.info(
         """Downloading available GOES satellite data. Parameters:
-    Satellite: %s
-    Product: %s
     Year: %s
     Day of Year Start: %s
     Day of Year End: %s
+    Satellite: %s
+    Product: %s
     Persist Directory: %s
-    Num Processes: %s""",
-        satellite,
-        product,
+    Number of Processes: %s""",
         year,
         day_of_year_min,
         day_of_year_max,
+        satellite,
+        product,
         persist_directory,
         os.cpu_count(),
     )
 
     days = list(range(day_of_year_min, day_of_year_max + 1))
-    filepaths = gl2.downloader.download_batch(
+    gl2.downloader.download_batch(
         year=year,
         days=days,
         satellite=satellite,
         product=product,
         persist_directory=persist_directory,
     )
-    _logger.info("Downloaded %d files to %s", len(filepaths), persist_directory)
     _logger.info("Job completed.")
 
 

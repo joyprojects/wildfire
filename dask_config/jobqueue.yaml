@@ -1,0 +1,33 @@
+jobqueue:
+  pbs:
+    # on NASA's HPC
+    # Cascade Lake        cas_ait  	      (40 cores/node)	    192 GB
+    # Skylake	            sly_ele         (40 cores/node)	    192 GB
+    # Broadwell	          bro             (28 cores/node)	    128 GB
+    # Haswell	            has             (24 cores/node)	    128 GB
+    # Ivy Bridge	        ivy             (20 cores/node)	    64 GB
+    # Sandy Bridge        san	            (16 cores/node)	    32 GB
+    # Sandy Bridge GPU    san_gpu (k40)   (16cpu+1gpu/node)   64 GB
+    # Skylake GPU         sky_gpu (v100)  (36cpu+4gpu/node)   384 GB
+
+    # Queues: devel, low, normal, long, debug, k40, v100
+    name: dask-worker
+    cores: 10
+    memory: "100 GB"
+    resource-spec: "select=1:ncpus=10:model=bro"
+    processes: 1
+    interface: ib1
+    death-timeout: 60
+    local-directory: null
+    queue: devel  # devel, low, normal, long
+    project: null
+    walltime: "00:30:00"
+
+  local:
+    name: dask-worker
+    # cores: null                 # Total number of cores per job
+    # memory: null                # Total amount of memory per job
+    # processes: null             # Number of Python processes per job
+    # interface: null             # Network interface to use like eth0 or ib0
+    # death-timeout: 60           # Number of seconds to wait if a worker can not find a
+    # local-directory: null       # Location of fast local storage like $TMPDIR

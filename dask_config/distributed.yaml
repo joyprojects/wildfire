@@ -1,0 +1,7 @@
+distributed:
+  worker:
+    memory:
+      target: false  # don't spill to disk
+      spill: false  # don't spill to disk
+      pause: 0.80  # pause execution at 80% memory use
+      terminate: 0.95  # restart the worker at 95% use

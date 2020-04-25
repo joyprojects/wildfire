@@ -42,10 +42,14 @@ def download_batch(year, days, satellite, product, persist_directory):
     _logger.info("Downloading batch of fire data...")
     year = str(year)
     download_args = [
-        [year, f"{day_of_year:03d}", satellite, product, persist_directory]
-        for day_of_year in days
+        [year] * len(days),
+        [f"{day_of_year:03d}" for day_of_year in days],
+        [satellite] * len(days),
+        [product] * len(days),
+        [persist_directory] * len(days),
     ]
     filepaths = multiprocessing.map_function(
         function=download_day, function_args=download_args
     )
+    _logger.info("Downloaded %d files to %s", len(filepaths), persist_directory)
     return filepaths

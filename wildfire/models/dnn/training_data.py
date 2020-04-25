@@ -116,7 +116,14 @@ def process_file(level_2_filepath, level_1_directory, height, width, stride):
 
 
 def create_goes_level_2_training_data(
-    level_2_directory, level_1_directory, persist_directory, height, width, stride
+    level_2_directory,
+    level_1_directory,
+    persist_directory,
+    height,
+    width,
+    stride,
+    pbs=False,
+    **cluster_kwargs,
 ):
     """Create GOES L2 training data for the CNN to predict wildfire presence.
 
@@ -137,14 +144,17 @@ def create_goes_level_2_training_data(
         len(goes_l2_filepaths),
         os.cpu_count(),
     )
-
     training_data = multiprocessing.map_function(
         function=process_file,
         function_args=[
-            [level_2_filepath, level_1_directory, height, width, stride]
-            for level_2_filepath in goes_l2_filepaths
+            goes_l2_filepaths,
+            [level_1_directory] * len(goes_l2_filepaths),
+            [height] * len(goes_l2_filepaths),
+            [width] * len(goes_l2_filepaths),
+            [stride] * len(goes_l2_filepaths),
         ],
-        flatten=False,
+        pbs=pbs,
+        **cluster_kwargs,
     )
     training_data = np.concatenate(training_data)
 

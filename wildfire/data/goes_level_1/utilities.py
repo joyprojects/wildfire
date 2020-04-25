@@ -7,7 +7,7 @@ import re
 
 import numpy as np
 
-from wildfire.multiprocessing import map_function
+from wildfire import multiprocessing
 
 SATELLITE_SHORT_HAND = {"noaa-goes16": "G16", "noaa-goes17": "G17"}
 SATELLITE_LONG_HAND = {"G16": "noaa-goes16", "G17": "noaa-goes17"}
@@ -21,6 +21,7 @@ BASE_PATTERN_FORMAT = os.path.join(
 )
 
 _logger = logging.getLogger(__name__)
+
 
 def group_filepaths_into_scans(filepaths):
     """Group bands in `filepaths` that belong to the same scan.
@@ -176,6 +177,8 @@ def list_local_files(
 ):
     """List local files that match parameters.
 
+    Only parallelizes across locally available hardware.
+
     Parameters
     ----------
     local_directory : str
@@ -204,7 +207,12 @@ def list_local_files(
         start_time=start_time,
         end_time=end_time,
     )
-    filepaths = map_function(glob.glob, glob_patterns)
+    # only parallel across local hardware
+    filepaths = multiprocessing.map_function(glob.glob, glob_patterns)
+    if len(filepaths) < 0:
+        raise ValueError(f"No files found using patterns {glob_patterns}")
+
+    filepaths = multiprocessing.flatten_array(filepaths)
     if end_time is not None:
         return filter_filepaths(
             filepaths=filepaths, start_time=start_time, end_time=end_time,

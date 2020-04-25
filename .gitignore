@@ -7,3 +7,4 @@ documentation/notebooks/temporary_output
 .tmp/
 downloaded_data/
 labeled_data/
+dask-worker-space

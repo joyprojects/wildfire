@@ -1,60 +1,41 @@
 """Utilities for multiprocessing."""
 import logging
-import os
 
+from dask.distributed import Client, LocalCluster, progress
+from dask_jobqueue import PBSCluster
 import numpy as np
-import ray
 
 _logger = logging.getLogger(__name__)
 
 
-def map_function(function, function_args, flatten=True):
-    """Map function arguments across function in parallel.
-
-    Uses the number of cores available on the machine as the number of workers. Uses
-    multiprocessing's `imap` in order to log a progress bar over its progress.
-
-    https://docs.python.org/3/library/multiprocessing.html#multiprocessing.pool.Pool.imap
-
-    User should read documentation on `multiprocessing.Pool` before using this method.
-    https://docs.python.org/3.7/library/multiprocessing.html
-
-    Parameters
-    ----------
-    function : function
-        Function to pool across multiple threads.
-    function_args : list of Any
-        Arguments to iteratively pass to `function` across multiple threads. All elements
-        must be pickleable. Only supports one iterable argument.
-    flatten : bool
-        Optional, defaults to True. Whether or not to flatten the output by a single
-        dimension before returning.
-
-    Returns
-    -------
-    list of Any
-        A list over the return values of `function` across the number of threads.
-        Length is equal to `len(function_args)`.
-    """
-    if not ray.is_initialized():
-        ray.init(ignore_reinit_error=True, include_webui=False, num_cpus=os.cpu_count())
-
-    if len(np.array(function_args).shape) == 1:
-        function_args = np.expand_dims(function_args, axis=1).tolist()
+def map_function(function, function_args, pbs=False, **cluster_kwargs):
+    dask_client = start_dask_client(pbs=pbs, **cluster_kwargs)
 
     _logger.info(
-        "Using %s workers to run %s with args of shape %s...",
-        os.cpu_count(),
+        "Running %s in parallel with args of shape %s",
         function.__name__,
-        np.array(function_args).shape,
+        np.shape(function_args),
     )
 
-    remote_function = ray.remote(function)
-    futures = [remote_function.remote(*args) for args in function_args]
-    responses = ray.get(futures)
-    if flatten:
-        return flatten_array(responses)
-    return responses
+    if len(np.shape(function_args)) == 1:
+        function_args = [function_args]
+
+    futures = dask_client.map(function, *function_args)
+    progress(futures)
+    return_values = dask_client.gather(futures)
+    dask_client.close()
+    return return_values
+
+
+def start_dask_client(pbs=False, **cluster_kwargs):
+    cluster = (
+        PBSCluster(**cluster_kwargs)
+        if pbs
+        else LocalCluster(processes=False, **cluster_kwargs)
+    )
+    client = Client(cluster)
+    _logger.info("Dask Cluster: %s\nDask Client: %s", cluster, client)
+    return client
 
 
 def flatten_array(arr):

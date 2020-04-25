@@ -2,7 +2,6 @@ import glob
 import os
 
 import pytest
-import ray
 import xarray as xr
 
 from wildfire.data import goes_level_1
@@ -138,19 +137,3 @@ def l2_wildfire():
         ),
         "l1_directory": l1_directory,
     }
-
-
-@pytest.fixture(scope="session", autouse=True)
-def ray_server():
-    """Start a ray server and manually close after termination.
-
-    Ray is shutting down poorly, which causes coverage to not clean up after itself well.
-    To get around this, we wrap all tests with this fixture so that we can manually shut
-    down ray after all tests conclude.
-
-    This is very similar to the known multiprocessing.Pool difficulty found here:
-    https://github.com/pytest-dev/pytest-cov/issues/100
-    """
-    ray.init(ignore_reinit_error=True, webui_host="127.0.0.1")
-    yield
-    ray.shutdown()

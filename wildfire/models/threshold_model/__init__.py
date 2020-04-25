@@ -7,3 +7,4 @@ from .model import (
     is_water_pixel,
     predict,
 )
+from .goes_level_1_wildfires import label_wildfires

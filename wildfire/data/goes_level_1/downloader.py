@@ -59,9 +59,10 @@ def list_s3_files(satellite, region, start_time, end_time=None, channel=None):
         s3=True,
     )
     _logger.info("Listing files in S3 using glob patterns: %s", glob_patterns)
-    filepaths = multiprocessing.map_function(
-        lambda x: s3.glob(x), glob_patterns  # pylint: disable=unnecessary-lambda
+    filepaths = multiprocessing.map_function(  # only parallel across local hardware
+        function=s3.glob, function_args=glob_patterns
     )
+    filepaths = multiprocessing.flatten_array(filepaths)
     if end_time is None:
         return filepaths
     return utilities.filter_filepaths(
@@ -87,31 +88,8 @@ def download_file(s3_filepath, local_directory, s3_filesystem=None):
         Local filepath to downloaded file.
     """
     s3_filesystem = (
-        s3_filesystem
-        if s3_filesystem is not None
-        else s3fs.S3FileSystem(anon=True, use_ssl=False)
+        s3_filesystem if s3_filesystem else s3fs.S3FileSystem(anon=True, use_ssl=False)
     )
-    local_path = s3_filepath_to_local(
-        s3_filepath=s3_filepath, local_directory=local_directory
-    )
-    os.makedirs(name=os.path.dirname(local_path), exist_ok=True)
-    s3_filesystem.get(rpath=s3_filepath, lpath=local_path)
-    return local_path
-
-
-def _download_file_mp(s3_filepath, local_directory, s3_filesystem):
-    """Download file to disk.
-
-    Meant to be used in parallel by `wildfire.multiprocessing.map_function()`
-
-    Local filepath will be of the form:
-        {local_direcory}/{s3_key}
-
-    Returns
-    -------
-    str
-        Local filepath to downloaded file.
-    """
     local_path = s3_filepath_to_local(
         s3_filepath=s3_filepath, local_directory=local_directory
     )
@@ -140,9 +118,6 @@ def download_files(local_directory, satellite, region, start_time, end_time=None
     list of str
         Local filepaths to downloaded files.
     """
-    print("download files..")
-    s3 = s3fs.S3FileSystem(anon=True, use_ssl=False)
-
     s3_filepaths = list_s3_files(
         satellite=satellite, region=region, start_time=start_time, end_time=end_time
     )
@@ -164,9 +139,10 @@ def download_files(local_directory, satellite, region, start_time, end_time=None
         "Downloading %d files using %d workers...", len(to_download), os.cpu_count(),
     )
     downloaded_filepaths = multiprocessing.map_function(
-        function=_download_file_mp,
+        function=download_file,
         function_args=[
-            [filepath_mapping[filepath], local_directory, s3] for filepath in to_download
+            [filepath_mapping[filepath] for filepath in to_download],
+            [local_directory] * len(to_download),
         ],
     )
     _logger.info(

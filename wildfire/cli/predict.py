@@ -2,18 +2,15 @@
 
 This module uses `ray` so that it can also be distributed across compute nodes.
 """
-import datetime
-import json
 import logging
 import os
 
 import click
 
-from wildfire import multiprocessing, wildfire
 from wildfire.data import goes_level_1
+from wildfire.models import threshold_model
 
 DATETIME_FORMATS = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]
-WILDFIRE_FILENAME = "wildfires_{satellite}_{region}_s{start}_e{end}_c{created}.json"
 
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
@@ -52,36 +49,18 @@ def predict():
     type=click.Path(exists=True, file_okay=False),
     help="Directory in which to persist wildfires.",
 )
-@click.option("--download", is_flag=True, help="Download from S3?")
+@click.option("--pbs", is_flag=True, help="If running using a PBS cluster.")
+@click.option("--num_jobs", default=1, type=int, help="Number of jobs to submit.")
 def goes_threshold(
-    start, end, satellite, region, goes_directory, wildfire_directory, download
+    start, end, satellite, region, goes_directory, wildfire_directory, pbs, num_jobs,
 ):
     """Label wildfires in GOES Level 1b data.
 
     Usage: `predict goes-threshold 2019-01-01 2019-01-02`
-    """
-    if download:
-        filepaths = goes_level_1.downloader.download_files(
-            local_directory=goes_directory,
-            satellite=satellite,
-            region=region,
-            start_time=start,
-            end_time=end,
-        )
-    else:
-        filepaths = goes_level_1.utilities.list_local_files(
-            local_directory=goes_directory,
-            satellite=satellite,
-            region=region,
-            start_time=start,
-            end_time=end,
-        )
-        if not filepaths:
-            raise ValueError("No local files found...")
 
-    scan_filepaths = goes_level_1.utilities.group_filepaths_into_scans(
-        filepaths=filepaths
-    )
+    If using PBS, then additional configuration can be set in the file located at
+    `os.environ["PBS_CONFIG_FILE"]`
+    """
     _logger.info(
         """Labeling wildfires from GOES data with the threshold model.
     Satellite: %s
@@ -90,43 +69,47 @@ def goes_threshold(
     End Time: %s
     GOES Directory: %s
     Persist Directory: %s
-    Num Processes: %s,
-    Num Scans: %s""",
+    PBS: %s
+    Number of Processes: %s
+    Number of Jobs: %s""",
         satellite,
         region,
         start,
         end,
         goes_directory,
         wildfire_directory,
+        pbs,
         os.cpu_count(),
-        len(scan_filepaths),
+        num_jobs,
     )
 
-    wildfires = multiprocessing.map_function(
-        function=wildfire.parse_scan_for_wildfire, function_args=[scan_filepaths]
+    # only parallel across local hardware
+    filepaths = goes_level_1.utilities.list_local_files(
+        local_directory=goes_directory,
+        satellite=satellite,
+        region=region,
+        start_time=start,
+        end_time=end,
     )
-    wildfires = list(filter(None, wildfires))
-    _logger.info("Found %d wildfires.", len(wildfires))
+    if not filepaths:
+        raise ValueError("No local files found...")
 
-    wildfires = multiprocessing.flatten_array(wildfires)
-    if len(wildfires) > 0:
-        wildfires_filepath = os.path.join(
-            wildfire_directory,
-            WILDFIRE_FILENAME.format(
-                satellite=satellite,
-                region=region,
-                start=start.strftime(DATETIME_FORMATS[0]),
-                end=end.strftime(DATETIME_FORMATS[0]),
-                created=datetime.datetime.utcnow().strftime(DATETIME_FORMATS[0]),
-            ),
-        )
-        _logger.info("Persisting wildfires to %s", wildfires_filepath)
-        with open(wildfires_filepath, "w+") as buffer:
-            json.dump(dict(enumerate(wildfires)), buffer)
-    else:
-        _logger.info("No wildfires found...")
+    scan_filepaths = goes_level_1.utilities.group_filepaths_into_scans(filepaths)
 
-    _logger.info("Success.")
+    _logger.info("Processing %s scans...", len(scan_filepaths))
+
+    cluster_kwargs = {"n_workers": num_jobs}
+    threshold_model.label_wildfires(
+        scan_filepaths=scan_filepaths,
+        wildfire_directory=wildfire_directory,
+        satellite=satellite,
+        region=region,
+        start=start,
+        end=end,
+        pbs=pbs,
+        **cluster_kwargs,
+    )
+    _logger.info("Job completed.")
 
 
 @predict.command
