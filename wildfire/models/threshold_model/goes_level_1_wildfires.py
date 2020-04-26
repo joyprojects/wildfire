@@ -192,7 +192,7 @@ def plot_wildfires(goes_scan):
 
 def label_wildfires(
     scan_filepaths,
-    wildfire_directory,
+    persist_directory,
     satellite,
     region,
     start,
@@ -200,6 +200,25 @@ def label_wildfires(
     pbs=False,
     **cluster_kwargs,
 ):
+    """Create a list of all scans that have wildfires.
+
+    Parameters
+    ----------
+    scan_filepaths : list of str
+    persist_directory : str
+    satellite : str
+        Must be either "noaa-goes16" or "noaa-goes17".
+    region : str
+        Must be one of ("M1", "M2", "C", "F")
+    start : datetime.datetime
+    end : datetime.datetime
+    pbs : bool, optional
+        Whether or not to launch and parallize using PBS, by default False
+
+    Returns
+    -------
+    dict
+    """
     wildfires = multiprocessing.map_function(
         function=parse_scan_for_wildfire,
         function_args=[scan_filepaths],
@@ -211,7 +230,7 @@ def label_wildfires(
 
     if len(wildfires) > 0:
         wildfires_filepath = os.path.join(
-            wildfire_directory,
+            persist_directory,
             WILDFIRE_FILENAME.format(
                 satellite=satellite,
                 region=region,

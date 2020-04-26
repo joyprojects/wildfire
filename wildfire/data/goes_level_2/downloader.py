@@ -16,8 +16,11 @@ def download_day(year, day_of_year, satellite, product, persist_directory):
     ----------
     year : str
     day_of_year : str
+        1 through 365.
     satellite : str
+        Must be either "noaa-goes16" or "noaa-goes17"
     product : str
+        Must be either "ABI-L2-FDCC" or "ABI-L2-FDCF".
     persist_directory : str
 
     Returns
@@ -39,6 +42,24 @@ def download_day(year, day_of_year, satellite, product, persist_directory):
 
 
 def download_batch(year, days, satellite, product, persist_directory):
+    """Download a set of GOES level 2 fire data.
+
+    Parameters
+    ----------
+    year : str
+    days : list of int
+        List of integers, where each integer must be between 1 and 365.
+    satellite : str
+        Must be either "noaa-goes16" or "noaa-goes17"
+    product : str
+        Must be either "ABI-L2-FDCC" or "ABI-L2-FDCF".
+    persist_directory : str
+
+    Returns
+    -------
+    str
+        The list of filepaths where data was downloaded.
+    """
     _logger.info("Downloading batch of fire data...")
     year = str(year)
     download_args = [
@@ -48,8 +69,5 @@ def download_batch(year, days, satellite, product, persist_directory):
         [product] * len(days),
         [persist_directory] * len(days),
     ]
-    filepaths = multiprocessing.map_function(
-        function=download_day, function_args=download_args
-    )
-    _logger.info("Downloaded %d files to %s", len(filepaths), persist_directory)
-    return filepaths
+    multiprocessing.map_function(function=download_day, function_args=download_args)
+    _logger.info("Downloaded files to %s", persist_directory)

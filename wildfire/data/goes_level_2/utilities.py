@@ -7,7 +7,19 @@ SCAN_TYPE = {"Full Disk": "F", "CONUS": "C"}
 
 
 def match_level_1(level_2, level_1_directory, download=False):
-    """For a given GOES level 2 product, find the level 1 product from the same scan."""
+    """For a given GOES level 2 product, find the level 1 product from the same scan.
+
+    Parameters
+    ----------
+    level_2 : xr.core.dataset.Dataset
+    level_1_directory : str
+    download : bool
+        Optional, defaults to False.
+
+    Returns
+    -------
+    wildfire.data.goes_level_1.GoesScan
+    """
     start_time = datetime.datetime.strptime(
         level_2.attrs["time_coverage_start"], "%Y-%m-%dT%H:%M:%S.%fZ"
     )

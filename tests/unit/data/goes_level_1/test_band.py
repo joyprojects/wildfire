@@ -9,12 +9,12 @@ import xarray as xr
 from wildfire.data import goes_level_1
 
 
-def test_goes_band(l1_reflective_band):
-    actual = goes_level_1.GoesBand(dataset=l1_reflective_band)
+def test_goes_band(goes_level_1_mesoscale):
+    actual = goes_level_1.GoesBand(dataset=goes_level_1_mesoscale)
     assert actual.region == "M1"
-    assert actual.satellite == "G17"
-    np.testing.assert_almost_equal(actual.band_wavelength_micrometers, 0.47, decimal=0)
-    assert actual.scan_time_utc == datetime.datetime(2019, 10, 27, 20, 0, 27, 500000)
+    assert actual.satellite == "G16"
+    np.testing.assert_almost_equal(actual.band_wavelength_micrometers, 0.47, decimal=2)
+    assert actual.scan_time_utc == datetime.datetime(2020, 1, 1, 0, 1, 26, 200000)
     assert actual.band_id == 1
     assert actual.parse().equals(actual.reflectance_factor)
     assert np.isnan(actual.reflectance_factor.data).sum() == 0
@@ -33,8 +33,8 @@ def test_goes_band(l1_reflective_band):
         assert isinstance(xr.open_dataset(filepath), xr.core.dataset.Dataset)
 
 
-def test_reflective_band(l1_reflective_band):
-    actual = goes_level_1.GoesBand(dataset=l1_reflective_band)
+def test_reflective_band(goes_level_1_mesoscale):
+    actual = goes_level_1.GoesBand(dataset=goes_level_1_mesoscale)
     assert actual.parse().equals(actual.reflectance_factor)
     assert np.isnan(actual.reflectance_factor.data).sum() == 0
     np.testing.assert_array_equal(
@@ -42,8 +42,8 @@ def test_reflective_band(l1_reflective_band):
     )
 
 
-def test_emissive_band(l1_emissive_band):
-    actual = goes_level_1.GoesBand(dataset=l1_emissive_band)
+def test_emissive_band(goes_level_1_channel_7):
+    actual = goes_level_1.GoesBand(dataset=goes_level_1_channel_7)
     assert actual.parse().equals(actual.brightness_temperature)
     assert np.isnan(actual.brightness_temperature.data).sum() == 0
     np.testing.assert_array_equal(
@@ -51,30 +51,35 @@ def test_emissive_band(l1_emissive_band):
     )
 
 
-def test_filter_bad_pixels(l1_emissive_band):
-    actual = goes_level_1.GoesBand(dataset=l1_emissive_band).filter_bad_pixels()
+def test_filter_bad_pixels(goes_level_1_mesoscale):
+    goes_band = goes_level_1.GoesBand(dataset=goes_level_1_mesoscale)
+    actual = goes_band.filter_bad_pixels()
+
     assert isinstance(actual, goes_level_1.GoesBand)
-    assert (np.isnan(l1_emissive_band.Rad.data).sum() == 0) & (
-        np.isnan(actual.dataset.Rad).data.sum() > 0
+    assert actual.scan_time_utc == goes_band.scan_time_utc
+    assert actual.band_id == goes_band.band_id
+    assert np.isnan(actual.reflectance_factor).sum() == 0
+
+
+def test_rescale_to_2km(goes_level_1_mesoscale, goes_level_1_conus, goes_level_1_full):
+    actual = goes_level_1.GoesBand(dataset=goes_level_1_mesoscale).rescale_to_2km()
+    assert isinstance(actual, goes_level_1.GoesBand)
+    assert actual.dataset.Rad.shape == (500, 500)
+    assert actual.rescale_to_2km().dataset.Rad.shape == (500, 500)
+
+    actual = goes_level_1.GoesBand(dataset=goes_level_1_conus).rescale_to_2km()
+    assert actual.dataset.Rad.shape == (1500, 2500)
+    assert actual.rescale_to_2km().dataset.Rad.shape == (1500, 2500)
+
+    actual = goes_level_1.GoesBand(dataset=goes_level_1_full).rescale_to_2km()
+    assert actual.dataset.Rad.shape == (5424, 5424)
+    assert actual.rescale_to_2km().dataset.Rad.shape == (5424, 5424)
+
+
+def test_read_netcdf(goes_level_1_filepaths_no_wildfire):
+    actual = goes_level_1.read_netcdf(
+        local_filepath=goes_level_1_filepaths_no_wildfire[0],
     )
-
-
-def test_rescale_to_2km(l1_reflective_band, l1_emissive_band):
-    actual = goes_level_1.GoesBand(dataset=l1_reflective_band).rescale_to_2km()
-    assert isinstance(actual, goes_level_1.GoesBand)
-    assert actual.dataset.Rad.shape == (500, 500)
-
-    actual = goes_level_1.GoesBand(dataset=l1_emissive_band).rescale_to_2km()
-    assert isinstance(actual, goes_level_1.GoesBand)
-    assert actual.dataset.Rad.shape == (500, 500)
-
-    actual = actual.rescale_to_2km()
-    assert isinstance(actual, goes_level_1.GoesBand)
-    assert actual.dataset.Rad.shape == (500, 500)
-
-
-def test_read_netcdf(l1_wildfire_scan_filepaths):
-    actual = goes_level_1.read_netcdf(local_filepath=l1_wildfire_scan_filepaths[0],)
     assert isinstance(actual, goes_level_1.GoesBand)
 
 
@@ -85,8 +90,8 @@ def test_normalize():
     np.testing.assert_array_equal(actual, expected)
 
 
-def test_get_goes_band_local(l1_wildfire_scan_filepaths):
-    local_filepath = l1_wildfire_scan_filepaths[0]
+def test_get_goes_band_local(goes_level_1_filepaths_no_wildfire):
+    local_filepath = goes_level_1_filepaths_no_wildfire[0]
     region, channel, satellite, scan_time = goes_level_1.utilities.parse_filename(
         local_filepath
     )
@@ -96,7 +101,9 @@ def test_get_goes_band_local(l1_wildfire_scan_filepaths):
         region=region,
         channel=channel,
         scan_time_utc=scan_time,
-        local_directory=os.path.join("tests", "resources", "goes_level_1_scan_wildfire"),
+        local_directory=os.path.join(
+            "tests", "resources", "goes_level_1_scan_no_wildfire"
+        ),
         s3=False,
     )
     assert isinstance(actual, goes_level_1.GoesBand)

@@ -45,6 +45,10 @@ def get_patch_indices(max_index, length, stride):
 def extract_patches_2d(arr, height, width, stride):
     """Extract 2d patches from array.
 
+    if stride = width, then shape of the returned object will be:
+        arr_height, arr_width, _ = arr.shape
+        ceil(arr_heigh / height) * ceil(arr_width / width)
+
     Parameters
     ----------
     arr : array-like
@@ -70,7 +74,9 @@ def extract_patches_2d(arr, height, width, stride):
     return np.array(patches)
 
 
-def process_file(level_2_filepath, level_1_directory, height, width, stride):
+def process_file(
+    level_2_filepath, level_1_directory, height, width, stride, persist_directory
+):
     """Create training data from a GOES level 2 fire dataset.
 
     For a given GOES L2 fire product, find the accompanying GOES L1 data, and return the
@@ -87,10 +93,11 @@ def process_file(level_2_filepath, level_1_directory, height, width, stride):
     Returns
     -------
     array-like
+        shape: (num_fire_patches, height, width, 17)
     """
     _logger.info("Processing %s...", level_2_filepath)
 
-    level_2 = xr.open_dataset(level_2_filepath)
+    level_2 = xr.load_dataset(level_2_filepath)
     level_1 = goes_level_2.utilities.match_level_1(
         level_2=level_2, level_1_directory=level_1_directory
     )
@@ -107,12 +114,32 @@ def process_file(level_2_filepath, level_1_directory, height, width, stride):
         ],
         dim="band",
     )
+
+    # shape = (x, y, 17)
     data = np.concatenate(
         [level_1.values, np.expand_dims(level_2.Temp.values, axis=0)]
     ).transpose([1, 2, 0])
+
+    # shape = (num_patches, height, width, 17)
     data = extract_patches_2d(arr=data, height=height, width=width, stride=stride)
     fire_indices = np.any(np.isfinite(data[:, :, :, -1]), axis=(1, 2))
-    return data[fire_indices]
+
+    # shape = (num_fire_pathces, height, width, 17)
+    data = data[fire_indices]
+
+    now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    basename = os.path.basename(level_2_filepath)
+    persist_filepath = os.path.join(persist_directory, f"cnn_training_c{now}_{basename}")
+
+    data = xr.Dataset(
+        {
+            "abi": xr.DataArray(data[:, :, :, :-1].astype(np.float32)),
+            "fire_temp": xr.DataArray(data[:, :, :, -1].astype(np.float32)),
+        }
+    )
+    data.to_netcdf(persist_filepath)
+    _logger.info("Saved training data to file: %s", persist_filepath)
+    return data
 
 
 def create_goes_level_2_training_data(
@@ -139,33 +166,24 @@ def create_goes_level_2_training_data(
     goes_l2_filepaths = glob.glob(
         os.path.join(level_2_directory, "**", "*.nc"), recursive=True
     )
+
+    num_filepaths = len(goes_l2_filepaths)
     _logger.info(
         "Creating training data from %d file for the DNN using %d processes...",
-        len(goes_l2_filepaths),
+        num_filepaths,
         os.cpu_count(),
     )
-    training_data = multiprocessing.map_function(
+    multiprocessing.map_function(
         function=process_file,
         function_args=[
             goes_l2_filepaths,
-            [level_1_directory] * len(goes_l2_filepaths),
-            [height] * len(goes_l2_filepaths),
-            [width] * len(goes_l2_filepaths),
-            [stride] * len(goes_l2_filepaths),
+            [level_1_directory] * num_filepaths,
+            [height] * num_filepaths,
+            [width] * num_filepaths,
+            [stride] * num_filepaths,
+            [persist_directory] * num_filepaths,
         ],
         pbs=pbs,
         **cluster_kwargs,
     )
-    training_data = np.concatenate(training_data)
-
-    inputs = training_data[:, :, :, :-1].astype(np.float32)
-    labels = training_data[:, :, :, -1].astype(np.float32)
-
-    persist_filepath = os.path.join(
-        persist_directory,
-        f"level_2_training_data_c{datetime.datetime.utcnow():%Y%m%d%H%M%S}.nc",
-    )
-    xr.Dataset(
-        {"abi": xr.DataArray(inputs), "fire_temp": xr.DataArray(labels)}
-    ).to_netcdf(persist_filepath)
-    _logger.info("Saved training data to file: %s", persist_filepath)
+    _logger.info("Saved training data to directory: %s", persist_directory)

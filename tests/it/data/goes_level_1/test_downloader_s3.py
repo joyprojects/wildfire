@@ -49,10 +49,10 @@ def test_list_s3_files_single_scan():
         assert actual_scan_time == parsed_scan_time
 
 
-def test_download_file(s3_l1_filepath):
+def test_download_file(s3_goes_level_1_filepath):
     with tempfile.TemporaryDirectory() as temporary_directory:
         actual = downloader.download_file(
-            s3_filepath=s3_l1_filepath, local_directory=temporary_directory,
+            s3_filepath=s3_goes_level_1_filepath, local_directory=temporary_directory,
         )
         assert os.path.exists(actual)
 

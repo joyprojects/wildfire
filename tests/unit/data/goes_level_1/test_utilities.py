@@ -1,11 +1,16 @@
 import datetime
 import os
 
+import numpy as np
+
 from wildfire.data.goes_level_1 import utilities
 
 
 def test_parse_filename():
-    filepath = "/ABI-L1b-RadM/2019/300/20/OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc"
+    filepath = (
+        "/ABI-L1b-RadM/2019/300/20/"
+        "OR_ABI-L1b-RadM1-M6C14_G17_s20193002048275_e20193002048332_c20193002048405.nc"
+    )
     actual = utilities.parse_filename(filename=filepath)
     assert actual[0] == "M1"
     assert actual[1] == 14
@@ -13,8 +18,10 @@ def test_parse_filename():
     assert actual[3] == datetime.datetime(2019, 10, 27, 20, 48, 27, 500000)
 
 
-def test_group_filepaths_into_scans(l1_wildfire_scan_filepaths):
-    actual = utilities.group_filepaths_into_scans(filepaths=l1_wildfire_scan_filepaths)
+def test_group_filepaths_into_scans(goes_level_1_filepaths_no_wildfire):
+    actual = utilities.group_filepaths_into_scans(
+        filepaths=goes_level_1_filepaths_no_wildfire
+    )
     assert len(actual) == 1
     assert len(actual[0]) == 16
 
@@ -87,20 +94,24 @@ def test_decide_fastest_glob_patterns():
     assert actual[0].count("*") == 4
 
 
-def test_list_local_files(l1_wildfire_scan_filepaths):
+def test_list_local_files(goes_level_1_filepaths_no_wildfire):
     actual = utilities.list_local_files(
-        local_directory=os.path.join("tests", "resources", "goes_level_1_scan_wildfire"),
+        local_directory=os.path.join(
+            "tests", "resources", "goes_level_1_scan_no_wildfire"
+        ),
         satellite="noaa-goes17",
         region="M1",
-        start_time=datetime.datetime(2019, 10, 27, 20, 0),
+        start_time=datetime.datetime(2019, 12, 1, 10, 27, 27),
     )
-    assert not set(actual) - set(l1_wildfire_scan_filepaths)
+    np.testing.assert_array_equal(actual, goes_level_1_filepaths_no_wildfire)
 
     actual = utilities.list_local_files(
-        local_directory=os.path.join("tests", "resources", "goes_level_1_scan_wildfire"),
+        local_directory=os.path.join(
+            "tests", "resources", "goes_level_1_scan_no_wildfire"
+        ),
         satellite="noaa-goes17",
         region="M1",
-        start_time=datetime.datetime(2019, 10, 27, 20, 0),
-        end_time=datetime.datetime(2019, 10, 27, 20, 1),
+        start_time=datetime.datetime(2019, 12, 1, 10, 27),
+        end_time=datetime.datetime(2019, 12, 1, 10, 28),
     )
-    assert not set(actual) - set(l1_wildfire_scan_filepaths)
+    np.testing.assert_array_equal(actual, goes_level_1_filepaths_no_wildfire)

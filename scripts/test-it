@@ -9,6 +9,10 @@ echo "Checking code style with pylint..."
 python3 -m pylint wildfire
 echo "Success!"
 
+echo "Checking code style with pydocstyle..."
+python3 -m pydocstyle wildfire
+echo "Success!"
+
 echo "Running unit and integration tests..."
 python -m pytest -v tests/
 echo "Success!"

@@ -124,7 +124,7 @@ class GoesScan:
         )
 
     def __eq__(self, other):
-        """Overrides default implementation."""
+        """Override default implementation."""
         if isinstance(other, GoesScan):
             return (
                 (self.satellite == other.satellite)

@@ -44,7 +44,7 @@ def predict():
     help="Directory in which to look for or download GOES data.",
 )
 @click.option(
-    "--wildfire_directory",
+    "--persist_directory",
     default="./labeled_data",
     type=click.Path(exists=True, file_okay=False),
     help="Directory in which to persist wildfires.",
@@ -52,7 +52,7 @@ def predict():
 @click.option("--pbs", is_flag=True, help="If running using a PBS cluster.")
 @click.option("--num_jobs", default=1, type=int, help="Number of jobs to submit.")
 def goes_threshold(
-    start, end, satellite, region, goes_directory, wildfire_directory, pbs, num_jobs,
+    start, end, satellite, region, goes_directory, persist_directory, pbs, num_jobs,
 ):
     """Label wildfires in GOES Level 1b data.
 
@@ -77,7 +77,7 @@ def goes_threshold(
         start,
         end,
         goes_directory,
-        wildfire_directory,
+        persist_directory,
         pbs,
         os.cpu_count(),
         num_jobs,
@@ -101,7 +101,7 @@ def goes_threshold(
     cluster_kwargs = {"n_workers": num_jobs}
     threshold_model.label_wildfires(
         scan_filepaths=scan_filepaths,
-        wildfire_directory=wildfire_directory,
+        persist_directory=persist_directory,
         satellite=satellite,
         region=region,
         start=start,
