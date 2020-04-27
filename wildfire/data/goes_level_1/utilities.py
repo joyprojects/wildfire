@@ -1,4 +1,4 @@
-"""Common utilities for modules in the goes subpackage."""
+"""Common utilities for the GOES level 1 data.."""
 import datetime
 import glob
 import logging

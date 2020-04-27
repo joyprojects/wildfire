@@ -1,4 +1,4 @@
-"""Download wildfire data."""
+"""Download satellite data."""
 import logging
 import os
 
@@ -14,7 +14,12 @@ _logger = logging.getLogger(__name__)
 
 @click.group()
 def download():
-    """Download wildfire data."""
+    """Download satellite data.
+
+    Usage
+    -----
+    `download --help`
+    """
     pass
 
 
@@ -45,7 +50,9 @@ def goes_level_1(start, end, satellite, region, persist_directory):
     Parallelize across locally available hardware, but not across multiple nodes (the
     node instances used by the developers do not have access to the external internet).
 
-    Usage: `download goes-level-1 2019-01-01 2019-02-01`
+    Usage
+    -----
+    `download goes-level-1 2019-01-01 2019-02-01`
     """
     _logger.info(
         """Downloading available GOES satellite data. Parameters:
@@ -103,7 +110,9 @@ def goes_level_2(
     Parallelize across locally available hardware, but not across multiple nodes (the
     node instances used by the developers do not have access to the external internet).
 
-    Usage: `download goes-level-2 2020 001 010`
+    Usage
+    -----
+    `download goes-level-2 2020 001 010`
     """
     _logger.info(
         """Downloading available GOES satellite data. Parameters:

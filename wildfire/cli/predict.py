@@ -1,7 +1,4 @@
-"""Create model predictions.
-
-This module uses `ray` so that it can also be distributed across compute nodes.
-"""
+"""Use available models to perform wildfire predictions."""
 import logging
 import os
 
@@ -18,7 +15,12 @@ _logger = logging.getLogger(__name__)
 
 @click.group()
 def predict():
-    """Use the wildfire models to predict."""
+    """Use the wildfire models to predict.
+
+    Usage
+    -----
+    `predict --help`
+    """
     pass
 
 
@@ -54,12 +56,14 @@ def predict():
 def goes_threshold(
     start, end, satellite, region, goes_directory, persist_directory, pbs, num_jobs,
 ):
-    """Label wildfires in GOES Level 1b data.
+    """Label wildfires in GOES level 1b data.
 
-    Usage: `predict goes-threshold 2019-01-01 2019-01-02`
+    If using PBS, then additional configuration can be set in the files located at the
+    path set by the `DASK_ROOT_CONFIG` environment variable, namely, `dask_config/`.
 
-    If using PBS, then additional configuration can be set in the file located at
-    `os.environ["PBS_CONFIG_FILE"]`
+    Usage
+    -----
+    `predict goes-threshold 2019-01-01 2019-01-02`
     """
     _logger.info(
         """Labeling wildfires from GOES data with the threshold model.

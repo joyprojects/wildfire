@@ -1,4 +1,4 @@
-"""Wrapper around the 16 bands of a GOES satellite scan."""
+"""Wrapper around the 16 bands of a GOES level 1 satellite scan."""
 import math
 
 import matplotlib.pyplot as plt
@@ -21,8 +21,8 @@ def get_goes_scan(satellite, region, scan_time_utc, local_directory, s3=True):
         Must be in set (M1, M2, C, F).
     scan_time_utc : datetime.datetime
     local_directory : str
-    s3 : bool
-        Whether s3 access is allowed.
+    s3 : bool, optional
+        Whether to download scan data from Amazon S3, if not already local.
 
     Returns
     -------
@@ -65,7 +65,7 @@ def read_netcdfs(local_filepaths, transform_func=None):
     ----------
     local_filepaths : list of str
     transform_func : function
-        (xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
+        f(xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
 
     Returns
     -------
@@ -108,8 +108,8 @@ class GoesScan:
         Raises
         ------
         ValueError
-            If `bands` is not of type `list of wildfire.data.goes_level_1.GoesBand` or if `bands`
-            is not of length 16, with one element for each band scanned.
+            If `bands` is not of type `list of wildfire.data.goes_level_1.GoesBand` or if
+            `bands` is not of length 16, with one element for each band scanned.
         """
         self.bands = self._parse_input(bands=bands)
         self.region, _, self.satellite, self.scan_time_utc = utilities.parse_filename(
@@ -152,7 +152,7 @@ class GoesScan:
     def _parse_input(bands):
         """Validate and parse __init__ input.
 
-        Create sorted dictionary of band data from a list of band data. Ensure input has
+        Create a sorted dictionary of band data from a list of band data. Ensure input has
         16 elements with one element for every band between 1 and 16 inclusive. Ensure
         ever element in the list has the same satellite, region, and scan start time.
 
@@ -224,7 +224,7 @@ class GoesScan:
         )
 
     def to_netcdf(self, directory):
-        """Persist a netcdf4 per band.
+        """Persist a netcdf4 file for each band.
 
         Persists files in a form matching the file struture in Amazon S3:
             {directory}/{s3_key}
@@ -254,8 +254,8 @@ class GoesScan:
         ----------
         bands : list of int
             Each element must be between 1 and 16 inclusive.
-        use_radiance : bool
-            Optional, whether to plot the spectral radiance. Defaults to `False`, which
+        use_radiance : bool, optinoal
+            Whether to plot the spectral radiance. Defaults to `False`, which
             will plot either the reflectance factor or the brightness temperature
             depending on the band (reflectance factor for bands 1 - 6 and brightness
             temperature for bands 7 - 16).

@@ -13,8 +13,8 @@ def match_level_1(level_2, level_1_directory, download=False):
     ----------
     level_2 : xr.core.dataset.Dataset
     level_1_directory : str
-    download : bool
-        Optional, defaults to False.
+    download : bool, optional
+        Whether to download missing data from Amazon S3. Defaults to False.
 
     Returns
     -------

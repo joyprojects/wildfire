@@ -1,4 +1,4 @@
-"""Wrapper around the a single band's data from a GOES satellite scan."""
+"""Wrapper around the a single band from a GOES Level 1 satellite scan."""
 import os
 
 import numpy as np
@@ -8,23 +8,20 @@ from . import downloader, utilities
 
 
 def get_goes_band(satellite, region, channel, scan_time_utc, local_directory, s3=True):
-    """Read the GoesBand defined by parameters from the local filesystem or s3.
-
-    Gives preference to data already on the local filesystem with downloading from
-    Amazon S3 used as a backup, if `s3` is `True`.
+    """Read the GoesBand defined by parameters from the local filesystem or Amazon S3.
 
     Parameters
     ----------
     satellite : str
-        Must be in set (noaa-goes16, noaa-goes17).
+        Must be in the set (noaa-goes16, noaa-goes17).
     region : str
         Must be in set (M1, M2, C, F).
     channel : int
         Must be between 1 and 16 inclusive.
     scan_time_utc : datetime.datetime
     local_directory : str
-    s3 : bool
-        Whether s3 access is allowed.
+    s3 : bool, optional
+        Whether to download scan data from Amazon S3, if not already local.
 
     Returns
     -------
@@ -58,7 +55,7 @@ def get_goes_band(satellite, region, channel, scan_time_utc, local_directory, s3
 
 
 def read_netcdf(local_filepath, transform_func=None):
-    """Read netcdf4 file defined at `local_filepath`.
+    """Read the netcdf4 file defined at `local_filepath`.
 
     If `transform_func` is provided, then transform dataset defined by `filepath` before
     returning.
@@ -67,7 +64,7 @@ def read_netcdf(local_filepath, transform_func=None):
     ----------
     local_filepath : str
     transform_func : function
-        (xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
+        f(xr.core.dataset.Dataset) -> (xr.core.dataset.Dataset)
 
     Returns
     -------
@@ -80,7 +77,7 @@ def read_netcdf(local_filepath, transform_func=None):
 
 
 class GoesBand:
-    """Wrapper around the a single band's data from a GOES satellite scan.
+    """Wrapper around the a single band of data from a GOES level 1 satellite scan.
 
     Attributes
     ----------
@@ -114,7 +111,7 @@ class GoesBand:
         self.band_wavelength_micrometers = dataset.band_wavelength.data[0]
 
     def __repr__(self):
-        """Represent GoesBand."""
+        """Represent a GoesBand object as a string."""
         return (
             f"GoesBand(satellite={self.satellite}, region={self.region}, "
             f"band={self.band_id}, wavelength={self.band_wavelength_micrometers:.2f}µm, "
@@ -129,11 +126,11 @@ class GoesBand:
 
         Parameters
         ----------
-        axis : plt.axes._subplots.AxesSubplot
-            Optional, axis to draw on. Defaults to `None`. If `None`, which causes the
+        axis : plt.axes._subplots.AxesSubplot, optional
+            The axis to draw on. Defaults to `None`. If `None`, which causes the
             method to create its own axis object.
-        use_radiance : bool
-            Optional, whether to plot the spectral radiance. Defaults to `False`, which
+        use_radiance : bool, optional
+            Whether to plot the spectral radiance. Defaults to `False`, which
             will plot either the reflectance factor or the brightness temperature
             depending on the band.
         **xr_imshow_kwargs : dict
@@ -169,8 +166,8 @@ class GoesBand:
 
         Parameters
         ----------
-        use_radiance : bool
-            Optional, whether to plot the spectral radiance. Defaults to `False`, which
+        use_radiance : bool, optional
+            Whether to plot the spectral radiance. Defaults to `False`, which
             will normalize either the reflectance factor or the brightness temperature
             depending on the band.
 
@@ -221,16 +218,14 @@ class GoesBand:
     def parse(self):
         """Parse spectral radiance into appropriate units.
 
-        Will parse into reflectance factor for the reflective bands (1 - 6), and
-        brightness temperature for emissive bands (7 - 16).
-
         Returns
         -------
         xr.core.dataarray.DataArray
+            Reflectance factor for the reflective bands (1 - 6)
+            Brightness temperature for emissive bands (7 - 16)
         """
-        if self.band_id < 7:  # reflective band
+        if self.band_id < 7:
             return self.reflectance_factor
-        # emissive band
         return self.brightness_temperature
 
     @property
@@ -238,7 +233,7 @@ class GoesBand:
         """Calculate the reflectance factor from spectral radiance.
 
         For more information, see the Reflective Channels section at
-        https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/noaa_goes_documentation.ipynb
+        https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/goes_data.ipynb
 
         Returns
         -------
@@ -254,7 +249,7 @@ class GoesBand:
         """Calculate the brightness temperature from spectral radiance.
 
         For more information, see the Emissive Channels section at
-        https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/noaa_goes_documentation.ipynb
+        https://github.com/joyprojects/wildfire/blob/master/documentation/notebooks/goes_data.ipynb
 
         Returns
         -------
@@ -287,7 +282,7 @@ class GoesBand:
     def to_netcdf(self, directory):
         """Persist to netcdf4.
 
-        Persists file in a form matching the file struture in Amazon S3:
+        Filepath is in a form matching the file struture of the Amazon S3 data:
             {local_directory}/{s3_bucket_name}/{s3_key}
         For example:
             {local_directory}/noaa-goes17/ABI-L1b-RadM/2019/300/20/

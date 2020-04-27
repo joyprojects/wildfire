@@ -42,7 +42,7 @@ def download_day(year, day_of_year, satellite, product, persist_directory):
 
 
 def download_batch(year, days, satellite, product, persist_directory):
-    """Download a set of GOES level 2 fire data.
+    """Download multiple days of GOES level 2 fire data.
 
     Parameters
     ----------

@@ -1,7 +1,4 @@
-"""Create training datasets.
-
-Uses `ray` so that it can also be distributed across compute nodes.
-"""
+"""Create training datasets."""
 import logging
 import os
 
@@ -15,7 +12,12 @@ _logger = logging.getLogger(__name__)
 
 @click.group()
 def training_data():
-    """Create training data for the wildfire models."""
+    """Create training data for the wildfire models.
+
+    Usage
+    -----
+    `training-data --help`
+    """
     pass
 
 
@@ -44,10 +46,12 @@ def goes_l2_cnn(
 ):
     """Create GOES level 2 training data for the DNN.
 
-    Usage: `training-data goes-l2-cnn ./level_1_directory ./level_2_directory`
+    If using PBS, then additional configuration can be set in the files located at the
+    path set by the `DASK_ROOT_CONFIG` environment variable, namely, `dask_config/`.
 
-    If using PBS, then additional configuration can be set in the file located at
-    `os.environ["PBS_CONFIG_FILE"]`
+    Usage
+    -----
+    `training-data goes-l2-cnn ./level_1_directory ./level_2_directory`
     """
     _logger.info(
         """Creating training data from GOES level 2 wildfire data.

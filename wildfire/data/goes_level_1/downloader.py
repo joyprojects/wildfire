@@ -7,8 +7,8 @@ GOES-16: https://s3.console.aws.amazon.com/s3/buckets/noaa-goes16/?region=us-eas
 This module uses the s3fs library to interact with Amazon S3. s3fs requires the user to
 supply their access key id and secret access key. To provide boto3 with the necessary
 credentials the user must either have a `~/.aws/credentials` file, or the environment
-variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` set. See this package's README.md
-or boto3's documentation at https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file for more information.
+variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` set. See boto3's documentation at
+https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#shared-credentials-file for more information.
 """
 from collections import namedtuple
 import logging
@@ -28,7 +28,7 @@ _logger = logging.getLogger(__name__)
 
 
 def list_s3_files(satellite, region, start_time, end_time=None, channel=None):
-    """List NOAA GOES-R series files in Amazon S3 matching parameters.
+    """List the NOAA GOES-R level 1 series files in Amazon S3 matching parameters.
 
     Parameters
     ----------
@@ -37,8 +37,8 @@ def list_s3_files(satellite, region, start_time, end_time=None, channel=None):
     region : str
         Must be in set (M1, M2, C, F).
     channel : int, optional
-        Must be between 1 and 16 inclusive. By default `None` which will list all
-        channels.
+        Must be between 1 and 16 inclusive. By default `None` which will list all data for
+        all channels.
     start_time : datetime.datetime
     end_time : datetime.datetime, optional
         By default `None`, which will list all files whose scan start time matches
@@ -79,13 +79,12 @@ def s3_filepath_to_local(s3_filepath, local_directory):
 def download_file(s3_filepath, local_directory, s3_filesystem=None):
     """Download file to disk.
 
-    Local filepath will be of the form:
-        {local_direcory}/{s3_key}
+    Local filepath will be of the form: {local_direcory}/{s3_key}
 
     Returns
     -------
     str
-        Local filepath to downloaded file.
+        Local filepath to the downloaded file.
     """
     s3_filesystem = (
         s3_filesystem if s3_filesystem else s3fs.S3FileSystem(anon=True, use_ssl=False)
