@@ -15,7 +15,6 @@ jobqueue:
     cores: 10
     memory: "100 GB"
     resource-spec: "select=1:ncpus=10:model=bro"
-    processes: 1
     interface: ib1
     death-timeout: 60
     local-directory: null
