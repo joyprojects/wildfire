@@ -89,6 +89,7 @@ def dask_client(pbs=False, **cluster_kwargs):
             cluster.scale(1)
     else:
         cluster = LocalCluster(processes=False, **cluster_kwargs)
+
     client = Client(cluster)
     client.wait_for_workers(n_workers=1)
     try:
