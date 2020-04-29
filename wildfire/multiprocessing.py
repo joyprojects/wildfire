@@ -1,6 +1,7 @@
 """Utilities for multiprocessing."""
 from contextlib import contextmanager
 import logging
+import time
 
 from dask.distributed import Client, LocalCluster, progress
 from dask_jobqueue import PBSCluster
@@ -92,8 +93,8 @@ def dask_client(pbs=False, **cluster_kwargs):
 
     client = Client(cluster)
 
-    expected_num_workers = len(client.scheduler_info()["workers"])
-    client.wait_for_workers(n_workers=expected_num_workers)
+    client.wait_for_workers(n_workers=1)
+    time.sleep(5)
 
     try:
         _logger.info("Dask Cluster: %s\nDask Client: %s", cluster, client)
@@ -101,9 +102,8 @@ def dask_client(pbs=False, **cluster_kwargs):
 
     finally:
         client.close()
-    _logger.info("Dask Cluster: %s\nDask Client: %s", cluster, client)
-    return client
-
+        cluster.close()
+        _logger.info("Closed client and cluster")
 
 def flatten_array(arr):
     """Flatten an array by 1 dimension."""
