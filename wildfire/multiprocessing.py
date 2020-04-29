@@ -91,7 +91,10 @@ def dask_client(pbs=False, **cluster_kwargs):
         cluster = LocalCluster(processes=False, **cluster_kwargs)
 
     client = Client(cluster)
-    client.wait_for_workers(n_workers=1)
+
+    expected_num_workers = len(client.scheduler_info()["workers"])
+    client.wait_for_workers(n_workers=expected_num_workers)
+
     try:
         _logger.info("Dask Cluster: %s\nDask Client: %s", cluster, client)
         yield client
